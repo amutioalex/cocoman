@@ -1,0 +1,29 @@
+sim: icarus
+srcs:
+  1: ${COCOMAN_EXAMPLES_DIR}/mini_counter/mini_counter.sv
+  2: ./big_counter/big_counter.sv
+tbs:
+  mini_counter_tb:
+    srcs: [1]
+    path: ./mini_counter
+    hdl: verilog
+    rtl_top: mini_counter
+    tb_top: mini_tb
+  big_counter_tb:
+    srcs: [1, 2]
+    path: ./big_counter
+    hdl: verilog
+    rtl_top: big_counter
+    tb_top: big_tb
+    build_args:
+      waves: False
+    test_args:
+      waves: False
+include:
+  - ${COCOMAN_EXAMPLES_DIR}
+build_args:
+  build_dir: ./simdir
+  waves: True
+test_args:
+  test_dir: ./simdir
+  waves: True

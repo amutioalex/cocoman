@@ -1,0 +1,42 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=76.0", "wheel>=0.45"]
+
+[project]
+name = "cocoman"
+description = "Regression runner for cocotb-based verification workflows"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [{name = "amutioalex"}]
+maintainers = [{name = "amutioalex"}]
+
+requires-python = ">=3.9"
+dependencies = ["cocotb", "cerberus", "pyyaml", "rich"]
+
+dynamic = ["version"]
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+keywords = ["testbench", "verification", "cocotb"]
+
+[project.scripts]
+cmn = "cocoman.__main__:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "cocoman.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cocoman"]
