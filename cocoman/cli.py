@@ -99,7 +99,7 @@ def get_cmn_parser() -> ArgumentParser:
         version=__version__,
         help="show current cocoman version",
     )
-    sub_p = base_p.add_subparsers(dest="command", metavar="COMMAND")
+    sub_p = base_p.add_subparsers(dest="command", metavar="COMMAND", required=True)
     list_p = sub_p.add_parser("list", help="display runbook information")
     list_p.add_argument(
         "runbook",
