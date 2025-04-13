@@ -274,6 +274,7 @@ def cmd_list(rbook: Runbook) -> None:
     console.print(tb_table, justify="left")
     console.print()
 
+
 def cmd_list_testbench(rbook: Runbook, tb_name: str) -> None:
     """Display detailed information about a specific testbench within a Runbook.
 
@@ -287,41 +288,73 @@ def cmd_list_testbench(rbook: Runbook, tb_name: str) -> None:
     """
     try:
         _check_testbench_name(rbook=rbook, tb_name=tb_name)
-    except CocomanNameError as excp:
-        raise excp
-    tb_info = rbook.tbs[tb_name]
-
-    load_includes(rbook)
-    try:
+        load_includes(rbook)
+        tb_info = rbook.tbs[tb_name]
         tb_pkg = load_n_import_tb(tb_info)
-    except TbEnvImportError as excp:
+        tb_tests = _get_test_names(tb_pkg)
+    except (CocomanNameError, TbEnvImportError) as excp:
         raise excp
 
-    p_color, s_color = "bold cornflower_blue", "dark_orange"
+    property_c, value_c, accent_c = "bold cornflower_blue", "white", "light_sea_green"
     console = Console()
-    console.print(Markdown(f"# {tb_name}"))
 
-    table = Table(show_header=False, title="General", title_justify="left")
-    table.add_column(style=p_color)
-    table.add_column(style=s_color)
-    table.add_row("Simulator", rbook.sim)
-    for param in ["Path", "RTL Top", "TB Top", "HDL"]:
-        var_name = param.lower().replace(" ", "_")
-        table.add_row(param, str(getattr(tb_info, var_name)))
-    console.print(table)
+    def get_docstr(obj: Any) -> str:
+        """Safely return the docstring of an object.
 
-    table = Table(show_header=False, title="Sources", title_justify="left")
-    table.add_column(style=s_color)
-    for index, path in rbook.srcs.items():
-        if index in tb_info.srcs:
-            table.add_row(str(path))
-    console.print(table)
+        Args:
+            obj: Any Python object to extract the docstring from.
 
-    table = Table(show_header=False, title="Tests", title_justify="left")
-    table.add_column(style=s_color)
-    for name in _get_test_names(tb_pkg):
-        table.add_row(name)
-    console.print(table)
+        Returns:
+            The object's docstring if it exists, otherwise an empty string.
+        """
+        return obj.__doc__ if obj.__doc__ else ""
+
+    # Main Table
+    console.print()
+    tb_table = Table(
+        box=box.SIMPLE,
+        show_header=False,
+        title=tb_name.upper(),
+        title_justify="left",
+        title_style="u bold",
+    )
+    tb_table.add_column(style=property_c)
+    tb_table.add_column(style=value_c)
+
+    # Description
+    tb_table.add_row(
+        "Description",
+        Markdown(get_docstr(tb_pkg), style=f"{value_c} italic dim"),
+        end_section=True,
+    )
+
+    # Module Information
+    mod_table = Table(box=box.SIMPLE, header_style="italic", show_header=True)
+    mod_table.add_column("TB Top", style=value_c)
+    mod_table.add_column("RTL Top", style=value_c)
+    mod_table.add_column("HDL", style=value_c)
+    mod_table.add_row(tb_info.tb_top, tb_info.rtl_top, tb_info.hdl)
+    tb_table.add_row("Module", mod_table, end_section=True)
+
+    # Path
+    tb_table.add_row("Path", str(tb_info.path), end_section=True)
+
+    # Tests
+    tst_table = Table(show_header=False)
+    tst_table.add_column(style=accent_c)
+    tst_table.add_column(style=value_c)
+
+    for tst in tb_tests:
+        tst_func = getattr(tb_pkg, tst)
+        tst_table.add_row(
+            tst, Markdown(get_docstr(tst_func), style=f"{value_c} italic dim")
+        )
+
+    tb_table.add_row("Tests", tst_table, end_section=True)
+
+    # Display
+    console.print(tb_table, justify="left")
+    console.print()
 
 
 def cmd_run(
