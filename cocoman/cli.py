@@ -16,6 +16,7 @@ filterwarnings("ignore")
 from cocotb.runner import get_runner
 filterwarnings("default")
 
+from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.table import Table
@@ -218,40 +219,60 @@ def cmd_list(rbook: Runbook) -> None:
     Args:
         rbook: The Runbook object to display information from.
     """
-    p_color, s_color = "bold cornflower_blue", "dark_orange"
+    property_c, value_c, accent_c = "bold cornflower_blue", "white", "light_sea_green"
     console = Console()
 
-    table = Table(show_header=False, title="General", title_justify="left")
-    table.add_column(style=p_color)
-    table.add_column(style=s_color)
-    table.add_row("Simulator", rbook.sim)
-    console.print(table)
+    # RUNBOOK CONFIGURATION #
+    console.print()
+    rb_table = Table(
+        box=box.SIMPLE,
+        show_header=False,
+        title="RUNBOOK CONFIGURATION",
+        title_justify="left",
+        title_style="u bold",
+    )
+    rb_table.add_column(style=property_c)
+    rb_table.add_column(style=value_c)
+    rb_table.add_row("Simulator", rbook.sim, end_section=True)
 
-    table = Table(title="Sources", title_justify="left")
-    table.add_column("Index", style=p_color)
-    table.add_column("Path", style=s_color)
+    src_table = Table(show_header=False)
+    src_table.add_column(style=accent_c)
+    src_table.add_column(style=value_c)
     for index, path in rbook.srcs.items():
-        table.add_row(str(index), str(path))
-    console.print(table)
+        src_table.add_row(str(index), str(path))
+    rb_table.add_row("Sources", src_table, end_section=True)
 
     if rbook.include:
-        table = Table(show_header=False, title="Include", title_justify="left")
-        table.add_column(style=s_color)
-        for path in rbook.include:
-            table.add_row(str(path))
-        console.print(table)
-
-    table = Table(title="Testbenches", title_justify="left")
-    table.add_column("Name", style=p_color)
-    table.add_column("RTL Top", style=s_color)
-    table.add_column("TB Top", style=s_color)
-    table.add_column("Sources", style=s_color)
-    for name, info in rbook.tbs.items():
-        table.add_row(
-            name, info.rtl_top, info.tb_top, ", ".join([str(x) for x in info.srcs])
+        rb_table.add_row(
+            "Include", "\n".join(map(str, rbook.include)), end_section=True
         )
-    console.print(table)
+    console.print(rb_table, justify="left")
 
+    # TESTBENCHES #
+    console.print()
+    tb_table = Table(
+        box=box.SIMPLE,
+        header_style="italic",
+        show_header=True,
+        title="TESTBENCHES",
+        title_justify="left",
+        title_style="u bold",
+    )
+    tb_table.add_column(header="Name", style=property_c)
+    tb_table.add_column(header="RTL Top", style=value_c)
+    tb_table.add_column(header="TB Top", style=value_c)
+    tb_table.add_column(header="Sources", style=accent_c)
+
+    for tb_name, tb_info in rbook.tbs.items():
+        tb_table.add_row(
+            tb_name,
+            tb_info.rtl_top,
+            tb_info.tb_top,
+            ", ".join(map(str, tb_info.srcs)),
+        )
+
+    console.print(tb_table, justify="left")
+    console.print()
 
 def cmd_list_testbench(rbook: Runbook, tb_name: str) -> None:
     """Display detailed information about a specific testbench within a Runbook.
