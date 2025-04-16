@@ -6,6 +6,7 @@ argument parsing and command handling.
 
 from argparse import ArgumentParser
 from pathlib import Path
+import re
 from types import ModuleType
 from typing import Any, Dict, List
 from warnings import filterwarnings
@@ -160,6 +161,7 @@ def get_cmn_parser() -> ArgumentParser:
         metavar="TSTNAME",
         nargs="+",
         required=False,
+        type=_check_regex,
         help="selecte specific test(s) to include in the run",
     )
     run_p.add_argument(
@@ -171,12 +173,35 @@ def get_cmn_parser() -> ArgumentParser:
         metavar="TSTNAME",
         nargs="+",
         required=False,
+        type=_check_regex,
         help="select specific test(s) to exclude from the run",
     )
     return base_p
 
 
 # AUXILIARY FUNCTIONS #
+
+
+def _check_regex(regex: str) -> str:
+    """Check if a provided string is a valid regular expression that can be compiled and
+    used to perform pattern matching.
+
+    Args:
+        regex: The string that contains the regular expression.
+
+    Returns:
+        The regex string.
+
+    Raises:
+        CocomanArgError: If the provided string does not contain a valid regex.
+    """
+    if not regex.strip():
+        raise CocomanArgError(0, "provided regular expression cannot be void")
+    try:
+        re.compile(regex)
+    except re.error as excp:
+        raise CocomanArgError(1, f"'{regex}' is not a valid regular expression: {excp}")
+    return regex
 
 
 def _check_testbench_name(rbook: Runbook, tb_name: str) -> None:
@@ -208,6 +233,20 @@ def _get_test_names(tb_pkg: ModuleType) -> List[str]:
     return [
         name for name in dir(tb_pkg) if isinstance(getattr(tb_pkg, name), cctb_test)
     ]
+
+
+def _str_in_regex_list(text: str, regexs: List[str]) -> bool:
+    """Check if a provided string matches fully any of the valid regular expressions of
+    a given list.
+
+    Args:
+        text: The string to check.
+        regexs: The list of valid regular expressions.
+
+    Returns:
+        True if the string matches any of the regex in the list, otherwise False.
+    """
+    return any(re.fullmatch(rgx, text) for rgx in regexs)
 
 
 # COMMANDS #
@@ -396,9 +435,9 @@ def cmd_run(
 
         tstcases = _get_test_names(tb_pkg)
         if include:
-            tstcases = [i for i in tstcases if i in include]
+            tstcases = [i for i in tstcases if _str_in_regex_list(i, include)]
         if exclude:
-            tstcases = [i for i in tstcases if i in exclude]
+            tstcases = [i for i in tstcases if _str_in_regex_list(i, exclude)]
         tstcases = [i for i in tstcases for _ in range(ntimes)]
         if not tstcases:
             continue
