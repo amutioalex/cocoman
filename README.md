@@ -102,8 +102,10 @@ test_args:
   testbenches.
 - `build_args`/`test_args`: Global configurations for build/test parameters.
 
-> Paths in runbook can be relative (to the working directory) or contain environment
-> variables.
+> Environment variables in paths are resolved. Non-absolute paths are interpreted
+> relative to the runbook YAML file's directory — **except** for paths in the
+> `build_args` and `test_args` sections, which are interpreted relative to the current
+> working directory.
 
 > Testbench-specific `build_args` and `test_args` override global settings.
 

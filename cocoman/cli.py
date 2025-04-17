@@ -6,6 +6,7 @@ argument parsing and command handling.
 
 from argparse import ArgumentParser
 from pathlib import Path
+import re
 from types import ModuleType
 from typing import Any, Dict, List
 from warnings import filterwarnings
@@ -16,6 +17,7 @@ filterwarnings("ignore")
 from cocotb.runner import get_runner
 filterwarnings("default")
 
+from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.table import Table
@@ -98,7 +100,7 @@ def get_cmn_parser() -> ArgumentParser:
         version=__version__,
         help="show current cocoman version",
     )
-    sub_p = base_p.add_subparsers(dest="command", metavar="COMMAND")
+    sub_p = base_p.add_subparsers(dest="command", metavar="COMMAND", required=True)
     list_p = sub_p.add_parser("list", help="display runbook information")
     list_p.add_argument(
         "runbook",
@@ -159,6 +161,7 @@ def get_cmn_parser() -> ArgumentParser:
         metavar="TSTNAME",
         nargs="+",
         required=False,
+        type=_check_regex,
         help="selecte specific test(s) to include in the run",
     )
     run_p.add_argument(
@@ -170,12 +173,35 @@ def get_cmn_parser() -> ArgumentParser:
         metavar="TSTNAME",
         nargs="+",
         required=False,
+        type=_check_regex,
         help="select specific test(s) to exclude from the run",
     )
     return base_p
 
 
 # AUXILIARY FUNCTIONS #
+
+
+def _check_regex(regex: str) -> str:
+    """Check if a provided string is a valid regular expression that can be compiled and
+    used to perform pattern matching.
+
+    Args:
+        regex: The string that contains the regular expression.
+
+    Returns:
+        The regex string.
+
+    Raises:
+        CocomanArgError: If the provided string does not contain a valid regex.
+    """
+    if not regex.strip():
+        raise CocomanArgError(0, "provided regular expression cannot be void")
+    try:
+        re.compile(regex)
+    except re.error as excp:
+        raise CocomanArgError(1, f"'{regex}' is not a valid regular expression: {excp}")
+    return regex
 
 
 def _check_testbench_name(rbook: Runbook, tb_name: str) -> None:
@@ -209,6 +235,20 @@ def _get_test_names(tb_pkg: ModuleType) -> List[str]:
     ]
 
 
+def _str_in_regex_list(text: str, regexs: List[str]) -> bool:
+    """Check if a provided string matches fully any of the valid regular expressions of
+    a given list.
+
+    Args:
+        text: The string to check.
+        regexs: The list of valid regular expressions.
+
+    Returns:
+        True if the string matches any of the regex in the list, otherwise False.
+    """
+    return any(re.fullmatch(rgx, text) for rgx in regexs)
+
+
 # COMMANDS #
 
 
@@ -218,39 +258,60 @@ def cmd_list(rbook: Runbook) -> None:
     Args:
         rbook: The Runbook object to display information from.
     """
-    p_color, s_color = "bold cornflower_blue", "dark_orange"
+    property_c, value_c, accent_c = "bold cornflower_blue", "white", "light_sea_green"
     console = Console()
 
-    table = Table(show_header=False, title="General", title_justify="left")
-    table.add_column(style=p_color)
-    table.add_column(style=s_color)
-    table.add_row("Simulator", rbook.sim)
-    console.print(table)
+    # RUNBOOK CONFIGURATION #
+    console.print()
+    rb_table = Table(
+        box=box.SIMPLE,
+        show_header=False,
+        title="RUNBOOK CONFIGURATION",
+        title_justify="left",
+        title_style="u bold",
+    )
+    rb_table.add_column(style=property_c)
+    rb_table.add_column(style=value_c)
+    rb_table.add_row("Simulator", rbook.sim, end_section=True)
 
-    table = Table(title="Sources", title_justify="left")
-    table.add_column("Index", style=p_color)
-    table.add_column("Path", style=s_color)
+    src_table = Table(show_header=False)
+    src_table.add_column(style=accent_c)
+    src_table.add_column(style=value_c)
     for index, path in rbook.srcs.items():
-        table.add_row(str(index), str(path))
-    console.print(table)
+        src_table.add_row(str(index), str(path))
+    rb_table.add_row("Sources", src_table, end_section=True)
 
     if rbook.include:
-        table = Table(show_header=False, title="Include", title_justify="left")
-        table.add_column(style=s_color)
-        for path in rbook.include:
-            table.add_row(str(path))
-        console.print(table)
-
-    table = Table(title="Testbenches", title_justify="left")
-    table.add_column("Name", style=p_color)
-    table.add_column("RTL Top", style=s_color)
-    table.add_column("TB Top", style=s_color)
-    table.add_column("Sources", style=s_color)
-    for name, info in rbook.tbs.items():
-        table.add_row(
-            name, info.rtl_top, info.tb_top, ", ".join([str(x) for x in info.srcs])
+        rb_table.add_row(
+            "Include", "\n".join(map(str, rbook.include)), end_section=True
         )
-    console.print(table)
+    console.print(rb_table, justify="left")
+
+    # TESTBENCHES #
+    console.print()
+    tb_table = Table(
+        box=box.SIMPLE,
+        header_style="italic",
+        show_header=True,
+        title="TESTBENCHES",
+        title_justify="left",
+        title_style="u bold",
+    )
+    tb_table.add_column(header="Name", style=property_c)
+    tb_table.add_column(header="RTL Top", style=value_c)
+    tb_table.add_column(header="TB Top", style=value_c)
+    tb_table.add_column(header="Sources", style=accent_c)
+
+    for tb_name, tb_info in rbook.tbs.items():
+        tb_table.add_row(
+            tb_name,
+            tb_info.rtl_top,
+            tb_info.tb_top,
+            ", ".join(map(str, tb_info.srcs)),
+        )
+
+    console.print(tb_table, justify="left")
+    console.print()
 
 
 def cmd_list_testbench(rbook: Runbook, tb_name: str) -> None:
@@ -266,41 +327,73 @@ def cmd_list_testbench(rbook: Runbook, tb_name: str) -> None:
     """
     try:
         _check_testbench_name(rbook=rbook, tb_name=tb_name)
-    except CocomanNameError as excp:
-        raise excp
-    tb_info = rbook.tbs[tb_name]
-
-    load_includes(rbook)
-    try:
+        load_includes(rbook)
+        tb_info = rbook.tbs[tb_name]
         tb_pkg = load_n_import_tb(tb_info)
-    except TbEnvImportError as excp:
+        tb_tests = _get_test_names(tb_pkg)
+    except (CocomanNameError, TbEnvImportError) as excp:
         raise excp
 
-    p_color, s_color = "bold cornflower_blue", "dark_orange"
+    property_c, value_c, accent_c = "bold cornflower_blue", "white", "light_sea_green"
     console = Console()
-    console.print(Markdown(f"# {tb_name}"))
 
-    table = Table(show_header=False, title="General", title_justify="left")
-    table.add_column(style=p_color)
-    table.add_column(style=s_color)
-    table.add_row("Simulator", rbook.sim)
-    for param in ["Path", "RTL Top", "TB Top", "HDL"]:
-        var_name = param.lower().replace(" ", "_")
-        table.add_row(param, str(getattr(tb_info, var_name)))
-    console.print(table)
+    def get_docstr(obj: Any) -> str:
+        """Safely return the docstring of an object.
 
-    table = Table(show_header=False, title="Sources", title_justify="left")
-    table.add_column(style=s_color)
-    for index, path in rbook.srcs.items():
-        if index in tb_info.srcs:
-            table.add_row(str(path))
-    console.print(table)
+        Args:
+            obj: Any Python object to extract the docstring from.
 
-    table = Table(show_header=False, title="Tests", title_justify="left")
-    table.add_column(style=s_color)
-    for name in _get_test_names(tb_pkg):
-        table.add_row(name)
-    console.print(table)
+        Returns:
+            The object's docstring if it exists, otherwise an empty string.
+        """
+        return obj.__doc__ if obj.__doc__ else ""
+
+    # Main Table
+    console.print()
+    tb_table = Table(
+        box=box.SIMPLE,
+        show_header=False,
+        title=tb_name.upper(),
+        title_justify="left",
+        title_style="u bold",
+    )
+    tb_table.add_column(style=property_c)
+    tb_table.add_column(style=value_c)
+
+    # Description
+    tb_table.add_row(
+        "Description",
+        Markdown(get_docstr(tb_pkg), style=f"{value_c} italic dim"),
+        end_section=True,
+    )
+
+    # Module Information
+    mod_table = Table(box=box.SIMPLE, header_style="italic", show_header=True)
+    mod_table.add_column("TB Top", style=value_c)
+    mod_table.add_column("RTL Top", style=value_c)
+    mod_table.add_column("HDL", style=value_c)
+    mod_table.add_row(tb_info.tb_top, tb_info.rtl_top, tb_info.hdl)
+    tb_table.add_row("Module", mod_table, end_section=True)
+
+    # Path
+    tb_table.add_row("Path", str(tb_info.path), end_section=True)
+
+    # Tests
+    tst_table = Table(show_header=False)
+    tst_table.add_column(style=accent_c)
+    tst_table.add_column(style=value_c)
+
+    for tst in tb_tests:
+        tst_func = getattr(tb_pkg, tst)
+        tst_table.add_row(
+            tst, Markdown(get_docstr(tst_func), style=f"{value_c} italic dim")
+        )
+
+    tb_table.add_row("Tests", tst_table, end_section=True)
+
+    # Display
+    console.print(tb_table, justify="left")
+    console.print()
 
 
 def cmd_run(
@@ -342,9 +435,9 @@ def cmd_run(
 
         tstcases = _get_test_names(tb_pkg)
         if include:
-            tstcases = [i for i in tstcases if i in include]
+            tstcases = [i for i in tstcases if _str_in_regex_list(i, include)]
         if exclude:
-            tstcases = [i for i in tstcases if i in exclude]
+            tstcases = [i for i in tstcases if _str_in_regex_list(i, exclude)]
         tstcases = [i for i in tstcases for _ in range(ntimes)]
         if not tstcases:
             continue
