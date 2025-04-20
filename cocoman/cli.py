@@ -154,27 +154,51 @@ def get_cmn_parser() -> ArgumentParser:
     )
     run_p.add_argument(
         "-i",
-        "--include",
+        "--include-tests",
         action="store",
         default=[],
-        dest="include",
+        dest="include_tests",
         metavar="TSTNAME",
         nargs="+",
         required=False,
         type=_check_regex,
-        help="selecte specific test(s) to include in the run",
+        help="select specific tests to include in the run",
     )
     run_p.add_argument(
         "-e",
-        "--exclude",
+        "--exclude-tests",
         action="store",
         default=[],
-        dest="exclude",
+        dest="exclude_tests",
         metavar="TSTNAME",
         nargs="+",
         required=False,
         type=_check_regex,
-        help="select specific test(s) to exclude from the run",
+        help="select specific tests to exclude from the run",
+    )
+    run_p.add_argument(
+        "-I",
+        "--include-tags",
+        action="store",
+        default=[],
+        dest="include_tags",
+        metavar="TAGNAME",
+        nargs="+",
+        required=False,
+        type=_check_regex,
+        help="select specific testbench tags to include in the run",
+    )
+    run_p.add_argument(
+        "-E",
+        "--exclude-tags",
+        action="store",
+        default=[],
+        dest="exclude_tags",
+        metavar="TAGNAME",
+        nargs="+",
+        required=False,
+        type=_check_regex,
+        help="select specific testbench tags to exclude from the run",
     )
     return base_p
 
@@ -400,8 +424,10 @@ def cmd_run(
     rbook: Runbook,
     tb_names: List[str],
     ntimes: int,
-    include: List[str],
-    exclude: List[str],
+    include_tests: List[str],
+    exclude_tests: List[str],
+    include_tags: List[str],
+    exclude_tags: List[str],
 ) -> None:
     """
     Execute specified testbenches using the cocotb runner, applying include/exclude
@@ -411,8 +437,10 @@ def cmd_run(
         rbook: The Runbook containing testbench definitions and configuration.
         tb_names: List of testbench names to execute.
         ntimes: Number of times each test case should be executed.
-        include: Names of test cases to include (if specified).
-        exclude: Names of test cases to exclude (if specified).
+        include_tests: Names of test cases to include (if specified).
+        exclude_tests: Names of test cases to exclude (if specified).
+        include_tags: Name of testbench tags to include (if specified).
+        exclude_tags: Name of testbench tags to exclude (if specified).
 
     Raises:
         CocomanNameError: If any of the testbench names is not registered in the
@@ -421,6 +449,7 @@ def cmd_run(
     """
     load_includes(rbook)
     sim = get_runner(rbook.sim)
+
     for name in tb_names:
         try:
             _check_testbench_name(rbook=rbook, tb_name=name)
@@ -433,11 +462,23 @@ def cmd_run(
         except TbEnvImportError as excp:
             raise excp
 
+        # Filter testbench by tags
+        tb_valid = True
+        if include_tags:
+            if not any(_str_in_regex_list(i, include_tags) for i in tb_info.tags):
+                tb_valid = False
+        if exclude_tags:
+            if any(_str_in_regex_list(i, exclude_tags) for i in tb_info.tags):
+                tb_valid = False
+        if not tb_valid:
+            continue
+
+        # Filter test names
         tstcases = _get_test_names(tb_pkg)
-        if include:
-            tstcases = [i for i in tstcases if _str_in_regex_list(i, include)]
-        if exclude:
-            tstcases = [i for i in tstcases if _str_in_regex_list(i, exclude)]
+        if include_tests:
+            tstcases = [i for i in tstcases if _str_in_regex_list(i, include_tests)]
+        if exclude_tests:
+            tstcases = [i for i in tstcases if _str_in_regex_list(i, exclude_tests)]
         tstcases = [i for i in tstcases for _ in range(ntimes)]
         if not tstcases:
             continue

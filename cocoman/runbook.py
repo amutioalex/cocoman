@@ -101,6 +101,7 @@ class Testbench:
         path: Absolute path to the directory containing the cocotb testbench module.
         rtl_top: Top-level RTL module name to be simulated.
         srcs: List of integers representing source file indices in the Runbook.
+        tags: List of strings of testbench tags for grouping and filtering.
         tb_top: Top-level Python module containing cocotb tests.
         test_args: Dictionary of test-specific arguments for the cocotb testbench.
     """
@@ -110,6 +111,7 @@ class Testbench:
     path: Path
     rtl_top: str
     srcs: List[int]
+    tags: List[str]
     tb_top: str
     test_args: Dict[str, Any]
 
@@ -177,6 +179,12 @@ def _validate_yaml_schema(yaml_dict: dict) -> None:
                         "type": "string",
                         "allowed": ["verilog", "vhdl"],
                         "required": True,
+                    },
+                    "tags": {
+                        "type": "list",
+                        "required": False,
+                        "schema": {"type": "string"},
+                        "empty": False,
                     },
                     "build_args": {
                         "type": "dict",
@@ -418,6 +426,7 @@ def load_runbook(file_path: Path) -> Runbook:
                 path=info["path"],
                 rtl_top=info["rtl_top"],
                 srcs=info["srcs"],
+                tags=info.get("tags", []),
                 tb_top=info["tb_top"],
                 test_args=info.get("test_args", {}),
             )

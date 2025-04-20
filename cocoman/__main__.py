@@ -61,8 +61,10 @@ def _exec_thread() -> None:
                 rbook=rbook,
                 tb_names=tb_names,
                 ntimes=p_args.ntimes[0],
-                include=p_args.include,
-                exclude=p_args.exclude,
+                include_tests=p_args.include_tests,
+                exclude_tests=p_args.exclude_tests,
+                include_tags=p_args.include_tags,
+                exclude_tags=p_args.exclude_tags,
             )
         except (CocomanError, TbEnvError) as excp:
             raise excp
