@@ -132,6 +132,14 @@ def get_cmn_parser() -> ArgumentParser:
         help="path to runbook file or directory containing a '.cocoman' runbook file",
     )
     run_p.add_argument(
+        "-d",
+        "--dry",
+        action="store_true",
+        dest="dry",
+        required=False,
+        help="preview execution plan without simulating",
+    )
+    run_p.add_argument(
         "-t",
         "--testbench",
         action="store",
@@ -422,6 +430,7 @@ def cmd_list_testbench(rbook: Runbook, tb_name: str) -> None:
 
 def cmd_run(
     rbook: Runbook,
+    dry: bool,
     tb_names: List[str],
     ntimes: int,
     include_tests: List[str],
@@ -435,6 +444,7 @@ def cmd_run(
 
     Args:
         rbook: The Runbook containing testbench definitions and configuration.
+        dry: Preview execution plan without simulating.
         tb_names: List of testbench names to execute.
         ntimes: Number of times each test case should be executed.
         include_tests: Names of test cases to include (if specified).
@@ -449,6 +459,7 @@ def cmd_run(
     """
     load_includes(rbook)
     sim = get_runner(rbook.sim)
+    console = Console()
 
     for name in tb_names:
         try:
@@ -481,6 +492,10 @@ def cmd_run(
             tstcases = [i for i in tstcases if _str_in_regex_list(i, exclude_tests)]
         tstcases = [i for i in tstcases for _ in range(ntimes)]
         if not tstcases:
+            continue
+
+        if dry:
+            console.print(Markdown(f"**{name}**: {', '.join(tstcases)}"))
             continue
 
         srcs = [p for i, p in rbook.srcs.items() if i in tb_info.srcs]

@@ -59,6 +59,7 @@ def _exec_thread() -> None:
         try:
             cmd_run(
                 rbook=rbook,
+                dry=p_args.dry,
                 tb_names=tb_names,
                 ntimes=p_args.ntimes[0],
                 include_tests=p_args.include_tests,
