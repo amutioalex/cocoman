@@ -306,12 +306,13 @@ def cmd_list(rbook: Runbook) -> None:
     rb_table.add_column(style=value_c)
     rb_table.add_row("Simulator", rbook.sim, end_section=True)
 
-    src_table = Table(show_header=False)
-    src_table.add_column(style=accent_c)
-    src_table.add_column(style=value_c)
-    for index, path in rbook.srcs.items():
-        src_table.add_row(str(index), str(path))
-    rb_table.add_row("Sources", src_table, end_section=True)
+    if rbook.srcs:
+        src_table = Table(show_header=False)
+        src_table.add_column(style=accent_c)
+        src_table.add_column(style=value_c)
+        for index, path in rbook.srcs.items():
+            src_table.add_row(str(index), str(path))
+        rb_table.add_row("Sources", src_table, end_section=True)
 
     if rbook.include:
         rb_table.add_row(

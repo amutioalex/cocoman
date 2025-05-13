@@ -159,6 +159,7 @@ def _validate_yaml_schema(yaml_dict: dict) -> None:
             "keysrules": {"type": "integer", "coerce": int},
             "valuesrules": {"type": "string", "empty": False},
             "empty": False,
+            "required": False,
         },
         "tbs": {
             "type": "dict",
@@ -168,12 +169,12 @@ def _validate_yaml_schema(yaml_dict: dict) -> None:
                 "schema": {
                     "srcs": {
                         "type": "list",
-                        "required": True,
+                        "required": False,
                         "schema": {"type": "integer"},
                         "empty": False,
                     },
                     "path": {"type": "string", "required": True, "empty": False},
-                    "rtl_top": {"type": "string", "required": True, "empty": False},
+                    "rtl_top": {"type": "string", "required": False, "empty": False},
                     "tb_top": {"type": "string", "required": True, "empty": False},
                     "hdl": {
                         "type": "string",
@@ -281,8 +282,9 @@ def _validate_paths(
         return Path(base, str(aux_p))
 
     # SOURCE PATHS
+    rb_srcs = rb_dict.get("srcs", {})
     rb_dict["srcs"] = {
-        k: get_abs_path(base=yaml_path, path=v) for k, v in rb_dict["srcs"].items()
+        k: get_abs_path(base=yaml_path, path=v) for k, v in rb_srcs.items()
     }
 
     # TESTBENCHES
@@ -295,6 +297,8 @@ def _validate_paths(
                 k: (expandvars(expanduser(v)) if isinstance(v, str) else v)
                 for k, v in rb_dict.get(args_name, {}).items()
             }
+        # SOURCES
+        tb_info["srcs"] = tb_info.get("srcs", [])
 
     # INCLUDES
     rb_dict["include"] = [
