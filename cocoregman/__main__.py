@@ -6,7 +6,7 @@ the runbook, and dispatches execution to the appropriate commands.
 """
 
 from pathlib import Path
-from cocoman.cli import (
+from cocoregman.cli import (
     cmd_list,
     cmd_list_testbench,
     cmd_run,
@@ -14,8 +14,8 @@ from cocoman.cli import (
     CocomanError,
     get_cmn_parser,
 )
-from cocoman.runbook import load_runbook, RbError
-from cocoman.tbenv import TbEnvError
+from cocoregman.runbook import load_runbook, RbError
+from cocoregman.tbenv import TbEnvError
 
 
 def _exec_thread() -> None:
@@ -59,10 +59,13 @@ def _exec_thread() -> None:
         try:
             cmd_run(
                 rbook=rbook,
+                dry=p_args.dry,
                 tb_names=tb_names,
                 ntimes=p_args.ntimes[0],
-                include=p_args.include,
-                exclude=p_args.exclude,
+                include_tests=p_args.include_tests,
+                exclude_tests=p_args.exclude_tests,
+                include_tags=p_args.include_tags,
+                exclude_tags=p_args.exclude_tags,
             )
         except (CocomanError, TbEnvError) as excp:
             raise excp

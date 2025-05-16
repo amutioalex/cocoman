@@ -7,7 +7,7 @@ and data references necessary for cocotb testbench management.
 
 from dataclasses import dataclass
 from inspect import getfullargspec
-from os.path import expandvars
+from os.path import expanduser, expandvars
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Union
 from warnings import filterwarnings
@@ -101,6 +101,7 @@ class Testbench:
         path: Absolute path to the directory containing the cocotb testbench module.
         rtl_top: Top-level RTL module name to be simulated.
         srcs: List of integers representing source file indices in the Runbook.
+        tags: List of strings of testbench tags for grouping and filtering.
         tb_top: Top-level Python module containing cocotb tests.
         test_args: Dictionary of test-specific arguments for the cocotb testbench.
     """
@@ -110,6 +111,7 @@ class Testbench:
     path: Path
     rtl_top: str
     srcs: List[int]
+    tags: List[str]
     tb_top: str
     test_args: Dict[str, Any]
 
@@ -157,6 +159,7 @@ def _validate_yaml_schema(yaml_dict: dict) -> None:
             "keysrules": {"type": "integer", "coerce": int},
             "valuesrules": {"type": "string", "empty": False},
             "empty": False,
+            "required": False,
         },
         "tbs": {
             "type": "dict",
@@ -166,17 +169,23 @@ def _validate_yaml_schema(yaml_dict: dict) -> None:
                 "schema": {
                     "srcs": {
                         "type": "list",
-                        "required": True,
+                        "required": False,
                         "schema": {"type": "integer"},
                         "empty": False,
                     },
                     "path": {"type": "string", "required": True, "empty": False},
-                    "rtl_top": {"type": "string", "required": True, "empty": False},
+                    "rtl_top": {"type": "string", "required": False, "empty": False},
                     "tb_top": {"type": "string", "required": True, "empty": False},
                     "hdl": {
                         "type": "string",
                         "allowed": ["verilog", "vhdl"],
                         "required": True,
+                    },
+                    "tags": {
+                        "type": "list",
+                        "required": False,
+                        "schema": {"type": "string"},
+                        "empty": False,
                     },
                     "build_args": {
                         "type": "dict",
@@ -236,6 +245,7 @@ def _validate_yaml_schema(yaml_dict: dict) -> None:
 
 def _validate_paths(
     rb_dict: Dict[str, Union[str, int, List[int], Dict[str, Any]]],
+    yaml_path: str,
 ) -> None:
     """Resolve and validate all paths in the runbook dictionary.
 
@@ -245,59 +255,62 @@ def _validate_paths(
 
     Args:
         rb_dict: The runbook dictionary after YAML schema validation.
+        yaml_path: Path to runbook YAML file.
 
     Raises:
         RbValidationError: If paths are non-existent, unresolved, or incorrectly
             referenced by testbenches.
     """
 
-    def get_real_path(path: str) -> Path:
+    def get_abs_path(base: str, path: str) -> Path:
         """Convert a relative or environment-based path to an absolute Path object.
 
-        This function expands environment variables and resolves relative paths to
-        absolute paths for consistent file system access.
+        This function expands user, environment variables and resolves relative paths to
+        absolute paths for consistent file system access. Relative paths are resolved to
+        a provided base path.
 
         Args:
-            path_str: The string representation of the path to be resolved.
+            base: Relative path root.
+            path: The string representation of the path to be resolved.
 
         Returns:
             An absolute and resolved Path object.
         """
-        return Path(expandvars(path)).resolve()
+        aux_p = Path(expandvars(expanduser(path)))
+        if aux_p.is_absolute():
+            return aux_p
+        return Path(base, str(aux_p))
 
-    def get_real_path_dict(p_dict: Dict[Any, str], only_expand: bool) -> None:
-        """Convert a given dictionary of string paths to a dictionary of absolute Path
-        objects. The provided dictionary object is modified in place.
+    # SOURCE PATHS
+    rb_srcs = rb_dict.get("srcs", {})
+    rb_dict["srcs"] = {
+        k: get_abs_path(base=yaml_path, path=v) for k, v in rb_srcs.items()
+    }
 
-        Each value in the provided dictionary is converted to an absolute Path object
-        using 'get_real_path()'. The dictionary keys remain unchanged.
-
-        Args:
-            data: Dictionary with integer keys and string path values.
-        """
-        for key, value in p_dict.items():
-            if not isinstance(value, str):
-                continue
-            if only_expand is True:
-                p_dict[key] = expandvars(value)
-            elif only_expand is False:
-                p_dict[key] = get_real_path(value)
-
-    # Obtain the real paths written in the runbook
-    get_real_path_dict(rb_dict["srcs"], only_expand=False)
-    for tb in rb_dict["tbs"].values():
-        tb["path"] = get_real_path(tb["path"])
+    # TESTBENCHES
+    for tb_info in rb_dict["tbs"].values():
+        # TB PATH
+        tb_info["path"] = get_abs_path(base=yaml_path, path=tb_info["path"])
+        # BUILD AND TEST ARGS
         for args_name in ["build_args", "test_args"]:
-            if args_name in tb:
-                get_real_path_dict(tb[args_name], only_expand=True)
+            tb_info[args_name] = {
+                k: (expandvars(expanduser(v)) if isinstance(v, str) else v)
+                for k, v in rb_dict.get(args_name, {}).items()
+            }
+        # SOURCES
+        tb_info["srcs"] = tb_info.get("srcs", [])
+
+    # INCLUDES
+    rb_dict["include"] = [
+        get_abs_path(base=yaml_path, path=i) for i in rb_dict.get("include", [])
+    ]
+
+    # BUILD AND TEST ARGS
     for args_name in ["build_args", "test_args"]:
-        if args_name in rb_dict:
-            get_real_path_dict(rb_dict[args_name], only_expand=True)
-    if "include" in rb_dict:
-        rb_dict["include"] = [
-            i if not isinstance(i, str) else get_real_path(i)
-            for i in rb_dict["include"]
-        ]
+        rb_dict[args_name] = {
+            k: (expandvars(expanduser(v)) if isinstance(v, str) else v)
+            for k, v in rb_dict.get(args_name, {}).items()
+        }
 
     # Check if the provided paths exist, and if they are correctly set
     x_srcs, x_non_exist, x_non_reg = [], [], {}
@@ -394,7 +407,7 @@ def load_runbook(file_path: Path) -> Runbook:
     rb_dict: dict
     try:
         _validate_yaml_schema(rb_dict)
-        _validate_paths(rb_dict)
+        _validate_paths(rb_dict=rb_dict, yaml_path=str(file_path.parent))
         validate_stages_args(rb_dict.get("test_args", {}), Simulator.test)
         validate_stages_args(rb_dict.get("build_args", {}), Simulator.build)
         for _, tb_info in rb_dict["tbs"].items():
@@ -417,6 +430,7 @@ def load_runbook(file_path: Path) -> Runbook:
                 path=info["path"],
                 rtl_top=info["rtl_top"],
                 srcs=info["srcs"],
+                tags=info.get("tags", []),
                 tb_top=info["tb_top"],
                 test_args=info.get("test_args", {}),
             )

@@ -3,7 +3,7 @@ build-backend = "setuptools.build_meta"
 requires = ["setuptools>=76.0", "wheel>=0.45"]
 
 [project]
-name = "cocoman"
+name = "cocoregman"
 description = "Regression runner for cocotb-based verification workflows"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -32,11 +32,11 @@ classifiers = [
 keywords = ["testbench", "verification", "cocotb"]
 
 [project.scripts]
-cmn = "cocoman.__main__:main"
+cmn = "cocoregman.__main__:main"
 
 [tool.setuptools.dynamic]
-version = {attr = "cocoman.__version__"}
+version = {attr = "cocoregman.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["cocoman"]
+include = ["cocoregman"]

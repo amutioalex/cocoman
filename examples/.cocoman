@@ -4,12 +4,14 @@ srcs:
   2: ./big_counter/big_counter.sv
 tbs:
   mini_counter_tb:
+    tags: ["mini"]
     srcs: [1]
     path: ./mini_counter
     hdl: verilog
     rtl_top: mini_counter
     tb_top: mini_tb
   big_counter_tb:
+    tags: ["big"]
     srcs: [1, 2]
     path: ./big_counter
     hdl: verilog
