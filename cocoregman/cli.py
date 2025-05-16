@@ -21,9 +21,9 @@ from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.table import Table
-from cocoman import __version__
-from cocoman.runbook import Runbook
-from cocoman.tbenv import load_includes, load_n_import_tb, TbEnvImportError
+from cocoregman import __version__
+from cocoregman.runbook import Runbook
+from cocoregman.tbenv import load_includes, load_n_import_tb, TbEnvImportError
 
 
 # EXCEPTIONS #
