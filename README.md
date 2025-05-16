@@ -33,8 +33,11 @@ without losing your mind.
 ## Option 1: Stable Version
 
 ```bash
-# Download and install the latest release
-$ python -m pip install cocoman-*.tar.gz
+# Install from PyPi
+$ pip install cocoregman
+
+# Or download and install the latest release
+$ python -m pip install cocoregman-*.tar.gz
 ```
 
 ## Option 2: Living on the Edge
@@ -47,44 +50,18 @@ $ cd cocoman
 $ python -m pip install -e .
 ```
 
+> The `main` branch contains stable features, whereas `dev` is meant for features that
+> might still need some testing.
+
+---
+
 # 🛠️ Usage <a id="usage"></a>
 
 **cocoman** needs a YAML file called a **runbook** to do its thing. Think of it as your
 regression playlist.
 
-## Example Runbook (`examples/.cocoman`)
+You can find a runbook example in `examples/.cocoman`.
 
-```yaml
-sim: icarus
-srcs:
-  1: ${COCOMAN_EXAMPLES_DIR}/mini_counter/mini_counter.sv
-  2: ./big_counter/big_counter.sv
-tbs:
-  mini_counter_tb:
-    srcs: [1]
-    path: ./mini_counter
-    hdl: verilog
-    rtl_top: mini_counter
-    tb_top: mini_tb
-  big_counter_tb:
-    srcs: [1, 2]
-    path: ./big_counter
-    hdl: verilog
-    rtl_top: big_counter
-    tb_top: big_tb
-    build_args:
-      waves: False
-    test_args:
-      waves: False
-include:
-  - ${COCOMAN_EXAMPLES_DIR}
-build_args:
-  build_dir: ./simdir
-  waves: True
-test_args:
-  test_dir: ./simdir
-  waves: True
-```
 ## Runbook Options
 
 - `sim`: The simulator to use.
@@ -102,35 +79,42 @@ test_args:
   testbenches.
 - `build_args`/`test_args`: Global configurations for build/test parameters.
 
-> Environment variables in paths are resolved. Non-absolute paths are interpreted
-> relative to the runbook YAML file's directory — **except** for paths in the
-> `build_args` and `test_args` sections, which are interpreted relative to the current
-> working directory.
+> Environment and user variables in source, include, and testbench paths are expanded.
+> Non-absolute paths are interpreted relative to the runbook YAML file's directory.
+> Strings in the `build_args` and `test_args` sections containing environment or user
+> variables are expanded, but they are not interpreted as relative paths.
 
 > Testbench-specific `build_args` and `test_args` override global settings.
 
 ## Commands
 
 > If no path to a runbook is provided, the tool will look for a `.cocoman` file in the
-> current directory, which should contain a valid runbook in YAML format.
+> current working directory, which should contain a valid runbook in YAML format.
 
 ### `list`
 
 ```bash
-$ cmn list [RUNBOOK]              # Show runbook info
-$ cmn list [RUNBOOK] [-t TBNAME]  # Show testbench-specific info
+$ cmn list [-t TBNAME] [RUNBOOK]
 ```
+Display a general overview of the runbook setup in a formatted way.
+- *-t*: Indicate a testbench name to display its overview instead.
 
 ### `run`
 
 ```bash
-$ cmn run [RUNBOOK]                     # Run all tests
-$ cmn run [RUNBOOK] [-t [TBNAME ...]]   # Run tests for a specific testbench
-$ cmn run [RUNBOOK] [-n NTIMES]         # Repeat tests N times
-$ cmn run [RUNBOOK] [-i [TSTNAME ...]]  # Run only selected tests
-$ cmn run [RUNBOOK] [-e [TSTNAME ...]]  # Exclude selected tests
+$ cmn run RUNBOOK [-d] [-t TBNAME [TBNAME]] [-n NTIMES] [-i TSTNAME [TSTNAME]]
+[-e TSTNAME [TSTNAME]] [-I TAGNAME [TAGNAME]] [-E TAGNAME [TAGNAME]] [RUNBOOK]
 ```
-> Inclusion (`-i`) is applied before exclusion (`-e`).
+Run a testbench regression.
+- *-d*: Dry run mode. Display execution plan instead of running it.
+- *-t*: List of testbenches, to run. If none, run all.
+- *-n*: Number of times each test should be run.
+- *-i*: List of testcases to run exclusively. Others are ignored.
+- *-e*: List of testcases to ignore. Other testcases are run.
+- *-I*: List of testbench tags to run exclusively. Others are ignored.
+- *-E*: List of testbench tags to ignore. Other testbenches are run.
+
+> Inclusion (`-i`, `-I`) is applied before exclusion (`-e`, `-E`).
 
 ## Running An Example
 
