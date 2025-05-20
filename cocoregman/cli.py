@@ -94,7 +94,7 @@ def get_cmn_parser() -> ArgumentParser:
         description="Regression runner for cocotb-based verification",
     )
     base_p.add_argument(
-        "-v",
+        "-V",
         "--version",
         action="version",
         version=__version__,
