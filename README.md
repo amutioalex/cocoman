@@ -15,8 +15,8 @@
          alt="Python Programming Language">
   </a>
   <a href="/LICENSE">
-    <img src="https://img.shields.io/badge/License-GPLv3-blue.svg"
-         alt="GNU GPLv3">
+    <img src="https://img.shields.io/badge/License-BSD_3--Clause-blue.svg"
+         alt="BSD 3-Clause">
   </a>
 </p>
 
