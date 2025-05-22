@@ -5,7 +5,7 @@ into structured Runbook objects. It ensures the correctness of YAML content, pat
 and data references necessary for cocotb testbench management.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from inspect import getfullargspec
 from os.path import expanduser, expandvars
 from pathlib import Path
@@ -106,14 +106,27 @@ class Testbench:
         test_args: Dictionary of test-specific arguments for the cocotb testbench.
     """
 
-    build_args: Dict[str, Any]
-    hdl: str
-    path: Path
-    rtl_top: str
-    srcs: List[int]
-    tags: List[str]
-    tb_top: str
-    test_args: Dict[str, Any]
+    build_args: Dict[str, Any] = field(default_factory=dict)
+    hdl: str = ""
+    path: Path = Path("")
+    rtl_top: str = ""
+    srcs: List[int] = field(default_factory=list)
+    tags: List[str] = field(default_factory=list)
+    tb_top: str = ""
+    test_args: Dict[str, Any] = field(default_factory=dict)
+
+    def __str__(self):
+        """Return the current Testbench instance as a string."""
+        return (
+            f"tags: {','.join(self.tags)}\n"
+            f"hdl: {self.hdl}\n"
+            f"rtl_top: {self.rtl_top}\n"
+            f"path: {self.path}\n"
+            f"tb_top: {self.tb_top}\n"
+            f"srcs: {','.join(map(str, self.srcs))}\n"
+            f"build_args: {self.build_args}\n"
+            f"test_args: {self.test_args}\n"
+        )
 
 
 @dataclass
@@ -129,12 +142,27 @@ class Runbook:
         test_args: Global test-specific arguments for all cocotb testbenches.
     """
 
-    build_args: Dict[str, Any]
-    include: List[Path]
-    sim: str
-    srcs: Dict[int, Path]
-    tbs: Dict[str, Testbench]
-    test_args: Dict[str, Any]
+    build_args: Dict[str, Any] = field(default_factory=dict)
+    include: List[Path] = field(default_factory=list)
+    sim: str = ""
+    srcs: Dict[int, Path] = field(default_factory=dict)
+    tbs: Dict[str, Testbench] = field(default_factory=dict)
+    test_args: Dict[str, Any] = field(default_factory=dict)
+
+    def __str__(self):
+        """Return the current Runbook instance as a string."""
+        pr_str = (
+            f"sim: {self.sim}\n"
+            f"srcs: {self.srcs}\n"
+            f"include: {','.join(map(str, self.include))}\n"
+            f"build_args: {self.build_args}\n"
+            f"test_args: {self.test_args}\n"
+            f"tbs:"
+        )
+        for tb_name, tb_info in self.tbs.items():
+            tb_str = "\n    ".join(str(tb_info).splitlines())
+            pr_str += f"\n  {tb_name}\n    {tb_str}"
+        return pr_str
 
 
 # RUNBOOK LOAD AND VALIDATION #
