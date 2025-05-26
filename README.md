@@ -33,11 +33,11 @@ without losing your mind.
 ## Option 1: Stable Version
 
 ```bash
-# Install from PyPi
+# Install from PyPI
 $ pip install cocoregman
 
 # Or download and install the latest release
-$ python -m pip install cocoregman-*.tar.gz
+$ python -m pip install cocoman-*.tar.gz
 ```
 
 ## Option 2: Living on the Edge
@@ -67,6 +67,7 @@ You can find a runbook example in `examples/.cocoman`.
 - `sim`: The simulator to use.
 - `srcs`: Indexed dictionary of source file paths.
 - `tbs`: Defines testbenches.
+  - `tags`: List of names for testbench filtering.
   - `srcs`: References to indexed sources.
   - `path`: Directory containing the testbench.
   - `hdl`: HDL used in the top module.
