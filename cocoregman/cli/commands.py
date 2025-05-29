@@ -1,12 +1,9 @@
-"""cocoman argument parser module.
+# pylint: disable=wrong-import-position, import-error, too-many-locals
+# pylint: disable=too-many-positional-arguments, too-many-arguments
+"""Commands module for the cocoman command-line interface (CLI)."""
 
-This module provides the command-line interface (CLI) for the cocoman tool, including
-argument parsing and command handling.
-"""
-
-from argparse import ArgumentParser
 from pathlib import Path
-import re
+from re import fullmatch as re_fullmatch
 from types import ModuleType
 from typing import Any, Dict, List
 from warnings import filterwarnings
@@ -14,19 +11,20 @@ from cocotb.decorators import test as cctb_test
 
 # Suppress warning when importing from cocotb.runner
 filterwarnings("ignore")
+
 from cocotb.runner import get_runner
+
 filterwarnings("default")
 
 from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.table import Table
-from cocoregman import __version__
 from cocoregman.runbook import Runbook
-from cocoregman.tbenv import load_includes, load_n_import_tb, TbEnvImportError
+from cocoregman.tbenv import load_includes, load_n_import_tb
 
 
-# EXCEPTIONS #
+# EXCEPTIONS
 
 
 class CocomanError(Exception):
@@ -67,173 +65,7 @@ class CocomanNameError(CocomanError):
         super().__init__("N", tag_id=tag_id, message=message)
 
 
-class CocomanArgError(CocomanError):
-    """Raised when an command-line argument is not an expected type or value."""
-
-    def __init__(self, tag_id: int, message: str) -> None:
-        """Initialize a CocomanArgError with a prefixed message.
-
-        Args:
-            tag_id: The specific error tag number id.
-            message: Description of the naming-related error.
-        """
-        super().__init__("A", tag_id=tag_id, message=message)
-
-
-# BUILDER #
-
-
-def get_cmn_parser() -> ArgumentParser:
-    """Create and configure the main ArgumentParser for cocoman.
-
-    Returns:
-        Configured parser instance.
-    """
-    base_p = ArgumentParser(
-        "cmn",
-        description="Regression runner for cocotb-based verification",
-    )
-    base_p.add_argument(
-        "-V",
-        "--version",
-        action="version",
-        version=__version__,
-        help="show current cocoman version",
-    )
-    sub_p = base_p.add_subparsers(dest="command", metavar="COMMAND", required=True)
-    list_p = sub_p.add_parser("list", help="display runbook information")
-    list_p.add_argument(
-        "runbook",
-        action="store",
-        default="./",
-        nargs="?",
-        metavar="RUNBOOK",
-        type=Path,
-        help="path to runbook file or directory containing a '.cocoman' runbook file",
-    )
-    list_p.add_argument(
-        "-t",
-        "--testbench",
-        action="store",
-        default=None,
-        nargs=1,
-        metavar="TBNAME",
-        required=False,
-        help="specify testbench name to inspect",
-    )
-    run_p = sub_p.add_parser("run", help="run a cocotb testbench")
-    run_p.add_argument(
-        "runbook",
-        action="store",
-        default="./",
-        nargs="?",
-        metavar="RUNBOOK",
-        type=Path,
-        help="path to runbook file or directory containing a '.cocoman' runbook file",
-    )
-    run_p.add_argument(
-        "-d",
-        "--dry",
-        action="store_true",
-        dest="dry",
-        required=False,
-        help="preview execution plan without simulating",
-    )
-    run_p.add_argument(
-        "-t",
-        "--testbench",
-        action="store",
-        default=[],
-        nargs="+",
-        metavar="TBNAME",
-        required=False,
-        help="specify testbench(es) to run",
-    )
-    run_p.add_argument(
-        "-n",
-        "--ntimes",
-        action="store",
-        default=[1],
-        dest="ntimes",
-        nargs=1,
-        required=False,
-        type=int,
-        help="number of times each test should be executed",
-    )
-    run_p.add_argument(
-        "-i",
-        "--include-tests",
-        action="store",
-        default=[],
-        dest="include_tests",
-        metavar="TSTNAME",
-        nargs="+",
-        required=False,
-        type=_check_regex,
-        help="select specific tests to include in the run",
-    )
-    run_p.add_argument(
-        "-e",
-        "--exclude-tests",
-        action="store",
-        default=[],
-        dest="exclude_tests",
-        metavar="TSTNAME",
-        nargs="+",
-        required=False,
-        type=_check_regex,
-        help="select specific tests to exclude from the run",
-    )
-    run_p.add_argument(
-        "-I",
-        "--include-tags",
-        action="store",
-        default=[],
-        dest="include_tags",
-        metavar="TAGNAME",
-        nargs="+",
-        required=False,
-        type=_check_regex,
-        help="select specific testbench tags to include in the run",
-    )
-    run_p.add_argument(
-        "-E",
-        "--exclude-tags",
-        action="store",
-        default=[],
-        dest="exclude_tags",
-        metavar="TAGNAME",
-        nargs="+",
-        required=False,
-        type=_check_regex,
-        help="select specific testbench tags to exclude from the run",
-    )
-    return base_p
-
-
-# AUXILIARY FUNCTIONS #
-
-
-def _check_regex(regex: str) -> str:
-    """Check if a provided string is a valid regular expression that can be compiled and
-    used to perform pattern matching.
-
-    Args:
-        regex: The string that contains the regular expression.
-
-    Returns:
-        The regex string.
-
-    Raises:
-        CocomanArgError: If the provided string does not contain a valid regex.
-    """
-    if not regex.strip():
-        raise CocomanArgError(0, "provided regular expression cannot be void")
-    try:
-        re.compile(regex)
-    except re.error as excp:
-        raise CocomanArgError(1, f"'{regex}' is not a valid regular expression: {excp}")
-    return regex
+# AUX
 
 
 def _check_testbench_name(rbook: Runbook, tb_name: str) -> None:
@@ -267,7 +99,7 @@ def _get_test_names(tb_pkg: ModuleType) -> List[str]:
     ]
 
 
-def _str_in_regex_list(text: str, regexs: List[str]) -> bool:
+def str_in_regex_list(text: str, regexs: List[str]) -> bool:
     """Check if a provided string matches fully any of the valid regular expressions of
     a given list.
 
@@ -278,10 +110,10 @@ def _str_in_regex_list(text: str, regexs: List[str]) -> bool:
     Returns:
         True if the string matches any of the regex in the list, otherwise False.
     """
-    return any(re.fullmatch(rgx, text) for rgx in regexs)
+    return any(re_fullmatch(rgx, text) for rgx in regexs)
 
 
-# COMMANDS #
+# COMMANDS
 
 
 def cmd_list(rbook: Runbook) -> None:
@@ -358,14 +190,11 @@ def cmd_list_testbench(rbook: Runbook, tb_name: str) -> None:
         CocomanNameError: If the testbench name is invalid.
         TbEnvImportError: If the top testbench module could not be imported.
     """
-    try:
-        _check_testbench_name(rbook=rbook, tb_name=tb_name)
-        load_includes(rbook)
-        tb_info = rbook.tbs[tb_name]
-        tb_pkg = load_n_import_tb(tb_info)
-        tb_tests = _get_test_names(tb_pkg)
-    except (CocomanNameError, TbEnvImportError) as excp:
-        raise excp
+    _check_testbench_name(rbook=rbook, tb_name=tb_name)
+    load_includes(rbook)
+    tb_info = rbook.tbs[tb_name]
+    tb_pkg = load_n_import_tb(tb_info)
+    tb_tests = _get_test_names(tb_pkg)
 
     property_c, value_c, accent_c = "bold cornflower_blue", "white", "light_sea_green"
     console = Console()
@@ -463,40 +292,34 @@ def cmd_run(
     console = Console()
 
     for name in tb_names:
-        try:
-            _check_testbench_name(rbook=rbook, tb_name=name)
-        except CocomanNameError as excp:
-            raise excp
+        _check_testbench_name(rbook=rbook, tb_name=name)
         tb_info = rbook.tbs[name]
-
-        try:
-            tb_pkg = load_n_import_tb(tb_info)
-        except TbEnvImportError as excp:
-            raise excp
+        tb_pkg = load_n_import_tb(tb_info)
 
         # Filter testbench by tags
-        tb_valid = True
-        if include_tags:
-            if not any(_str_in_regex_list(i, include_tags) for i in tb_info.tags):
-                tb_valid = False
-        if exclude_tags:
-            if any(_str_in_regex_list(i, exclude_tags) for i in tb_info.tags):
-                tb_valid = False
-        if not tb_valid:
+        if include_tags and not any(
+            str_in_regex_list(i, include_tags) for i in tb_info.tags
+        ):
+            continue
+        if exclude_tags and any(
+            str_in_regex_list(i, include_tags) for i in tb_info.tags
+        ):
             continue
 
         # Filter test names
         tstcases = _get_test_names(tb_pkg)
         if include_tests:
-            tstcases = [i for i in tstcases if _str_in_regex_list(i, include_tests)]
+            tstcases = [i for i in tstcases if str_in_regex_list(i, include_tests)]
         if exclude_tests:
-            tstcases = [i for i in tstcases if _str_in_regex_list(i, exclude_tests)]
+            tstcases = [i for i in tstcases if str_in_regex_list(i, exclude_tests)]
         tstcases = [i for i in tstcases for _ in range(ntimes)]
         if not tstcases:
             continue
 
         if dry:
-            console.print(Markdown(f"**{name}**: {', '.join(tstcases)}"))
+            console.print(f"[bold]{name}[/bold]")
+            for tst in tstcases:
+                console.print(f" • {tst}")
             continue
 
         srcs = [p for i, p in rbook.srcs.items() if i in tb_info.srcs]
@@ -513,10 +336,8 @@ def cmd_run(
             **b_args,
         )
 
-        if "results_xml" not in t_args:
-            res_xml = Path(sim.build_dir, f"{name}_results.xml")
-        else:
-            res_xml = t_args["results_xml"]
+        res_xml = t_args.get("results_xml", Path(sim.build_dir, f"{name}_results.xml"))
+
         sim.test(
             hdl_toplevel=tb_info.rtl_top,
             hdl_toplevel_lang=tb_info.hdl,

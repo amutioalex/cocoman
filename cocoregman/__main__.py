@@ -5,15 +5,10 @@ cocotb-based verification workflows. It handles command-line argument parsing, l
 the runbook, and dispatches execution to the appropriate commands.
 """
 
+from argparse import ArgumentTypeError
 from pathlib import Path
-from cocoregman.cli import (
-    cmd_list,
-    cmd_list_testbench,
-    cmd_run,
-    CocomanArgError,
-    CocomanError,
-    get_cmn_parser,
-)
+from cocoregman.cli.argp import CocomanArgParser
+from cocoregman.cli.commands import cmd_list, cmd_list_testbench, cmd_run, CocomanError
 from cocoregman.runbook import load_runbook, RbError
 from cocoregman.tbenv import TbEnvError
 
@@ -23,12 +18,12 @@ def _exec_thread() -> None:
     and executes the requested command.
 
     Raises:
-        CocomanArgError: If the path to the runbook does not point to an existent file.
+        ArgumentTypeError: If the path to the runbook does not point to an existent file.
         RbError: If an error is found while loading the runbook.
         CocomanError: If an error is found while running a command.
         TbEnvError: If an error is found while running a command.
     """
-    cmn_p = get_cmn_parser()
+    cmn_p = CocomanArgParser()
     p_args = cmn_p.parse_args()
 
     # Obtain runbook
@@ -36,7 +31,7 @@ def _exec_thread() -> None:
     if rb_path.is_dir():
         rb_path = rb_path / ".cocoman"
     if not rb_path.is_file():
-        raise CocomanArgError(
+        raise ArgumentTypeError(
             0, f"provided runbook path is not a file '{str(rb_path)}'"
         )
     try:
@@ -61,7 +56,7 @@ def _exec_thread() -> None:
                 rbook=rbook,
                 dry=p_args.dry,
                 tb_names=tb_names,
-                ntimes=p_args.ntimes[0],
+                ntimes=p_args.ntimes,
                 include_tests=p_args.include_tests,
                 exclude_tests=p_args.exclude_tests,
                 include_tags=p_args.include_tags,
