@@ -64,8 +64,11 @@ You can find a runbook example in `examples/.cocoman`.
 
 ## Runbook Options
 
-- `sim`: The simulator to use.
-- `srcs`: Indexed dictionary of source file paths.
+- `general`: Defines basic regression parameters.
+  - `sim`: The simulator to use.
+  - `srcs`: Indexed dictionary of source file paths.
+  - `build_args`/`test_args`: Global configurations for build/test parameters.
+
 - `tbs`: Defines testbenches.
   - `tags`: List of names for testbench filtering.
   - `srcs`: References to indexed sources.
@@ -76,9 +79,9 @@ You can find a runbook example in `examples/.cocoman`.
   - `build_args`/`test_args`: Custom arguments for the
     [cocotb.runner.Simulator](https://docs.cocotb.org/en/stable/library_reference.html#python-test-runner)
     `build`/`test` methods.
+
 - `include`: List of directories containing additional Python modules for the 
   testbenches.
-- `build_args`/`test_args`: Global configurations for build/test parameters.
 
 > Environment and user variables in source, include, and testbench paths are expanded.
 > Non-absolute paths are interpreted relative to the runbook YAML file's directory.
@@ -86,6 +89,11 @@ You can find a runbook example in `examples/.cocoman`.
 > variables are expanded, but they are not interpreted as relative paths.
 
 > Testbench-specific `build_args` and `test_args` override global settings.
+
+> The `general` section contains global options like `sim`, `build_args`, ...
+> For backward compatibility, these options may also be defined at the top level of the
+> runbook. However, if the `general` section is present, the top-level definitions of
+> those same options will be ignored.
 
 ## Commands
 
