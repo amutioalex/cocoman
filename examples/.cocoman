@@ -1,4 +1,11 @@
-sim: icarus
+general:
+  sim: icarus
+  build_args:
+    build_dir: ./simdir
+    waves: True
+  test_args:
+    test_dir: ./simdir
+    waves: True
 srcs:
   1: ${COCOMAN_EXAMPLES_DIR}/mini_counter/mini_counter.sv
   2: ./big_counter/big_counter.sv
@@ -23,9 +30,3 @@ tbs:
       waves: False
 include:
   - ${COCOMAN_EXAMPLES_DIR}
-build_args:
-  build_dir: ./simdir
-  waves: True
-test_args:
-  test_dir: ./simdir
-  waves: True

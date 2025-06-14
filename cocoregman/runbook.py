@@ -1,3 +1,4 @@
+# pylint: disable=wrong-import-position, too-many-instance-attributes
 """Runbook parsing and validation module for the cocoman framework.
 
 This module provides utilities to parse, validate, and convert runbook YAML files
@@ -5,7 +6,6 @@ into structured Runbook objects. It ensures the correctness of YAML content, pat
 and data references necessary for cocotb testbench management.
 """
 
-from dataclasses import dataclass, field
 from inspect import getfullargspec
 from os.path import expanduser, expandvars
 from pathlib import Path
@@ -15,10 +15,13 @@ from cerberus import Validator
 
 # Suppress warning when importing from cocotb.runner
 filterwarnings("ignore")
+
 from cocotb.runner import Simulator
+
 filterwarnings("default")
 
 from yaml import MarkedYAMLError, safe_load, YAMLError
+from cocoregman.datatypes import Runbook, Testbench
 
 
 # EXCEPTIONS #
@@ -88,100 +91,13 @@ class RbYAMLError(RbError):
         super().__init__(err_prefix="Y", tag_id=tag_id, message=message)
 
 
-# DATATYPES #
+# SCHEMA VALIDATION #
 
 
-@dataclass
-class Testbench:
-    """Dataclass representing a single Runbook Testbench.
-
-    Attributes:
-        build_args: Dictionary of build-specific arguments for the cocotb testbench.
-        hdl: Hardware description language used.
-        path: Absolute path to the directory containing the cocotb testbench module.
-        rtl_top: Top-level RTL module name to be simulated.
-        srcs: List of integers representing source file indices in the Runbook.
-        tags: List of strings of testbench tags for grouping and filtering.
-        tb_top: Top-level Python module containing cocotb tests.
-        test_args: Dictionary of test-specific arguments for the cocotb testbench.
-    """
-
-    build_args: Dict[str, Any] = field(default_factory=dict)
-    hdl: str = ""
-    path: Path = Path("")
-    rtl_top: str = ""
-    srcs: List[int] = field(default_factory=list)
-    tags: List[str] = field(default_factory=list)
-    tb_top: str = ""
-    test_args: Dict[str, Any] = field(default_factory=dict)
-
-    def __str__(self):
-        """Return the current Testbench instance as a string."""
-        return (
-            f"tags: {','.join(self.tags)}\n"
-            f"hdl: {self.hdl}\n"
-            f"rtl_top: {self.rtl_top}\n"
-            f"path: {self.path}\n"
-            f"tb_top: {self.tb_top}\n"
-            f"srcs: {','.join(map(str, self.srcs))}\n"
-            f"build_args: {self.build_args}\n"
-            f"test_args: {self.test_args}\n"
-        )
-
-
-@dataclass
-class Runbook:
-    """Dataclass representing a complete cocotb Runbook configuration.
-
-    Attributes:
-        build_args: Global build-specific arguments for all cocotb testbenches.
-        include: List of directories to be included in the Python path.
-        sim: Simulation tool to be used.
-        srcs: Mapping of source file indices to their absolute paths.
-        tbs: Dictionary of testbench names mapped to Testbench objects.
-        test_args: Global test-specific arguments for all cocotb testbenches.
-    """
-
-    build_args: Dict[str, Any] = field(default_factory=dict)
-    include: List[Path] = field(default_factory=list)
-    sim: str = ""
-    srcs: Dict[int, Path] = field(default_factory=dict)
-    tbs: Dict[str, Testbench] = field(default_factory=dict)
-    test_args: Dict[str, Any] = field(default_factory=dict)
-
-    def __str__(self):
-        """Return the current Runbook instance as a string."""
-        pr_str = (
-            f"sim: {self.sim}\n"
-            f"srcs: {self.srcs}\n"
-            f"include: {','.join(map(str, self.include))}\n"
-            f"build_args: {self.build_args}\n"
-            f"test_args: {self.test_args}\n"
-            f"tbs:"
-        )
-        for tb_name, tb_info in self.tbs.items():
-            tb_str = "\n    ".join(str(tb_info).splitlines())
-            pr_str += f"\n  {tb_name}\n    {tb_str}"
-        return pr_str
-
-
-# RUNBOOK LOAD AND VALIDATION #
-
-
-def _validate_yaml_schema(yaml_dict: dict) -> None:
-    """Validate the structure of a YAML dictionary against the cocoman Runbook schema.
-
-    Uses 'cerberus' to verify that the provided YAML dictionary adheres to the expected
-    schema structure, including valid keys, value types, and allowed options.
-
-    Args:
-        yaml_dict: The YAML dictionary to be validated.
-
-    Raises:
-        RbValidationError: If the provided YAML dictionary does not match the expected
-            schema.
-    """
-    rb_schema = {
+def _get_base_sch() -> dict:
+    """Return the common cerberus schema for runbook objects. This schema definition is
+    shared in runbook with or without the 'general' section implemented."""
+    return {
         "srcs": {
             "type": "dict",
             "keysrules": {"type": "integer", "coerce": int},
@@ -228,6 +144,19 @@ def _validate_yaml_schema(yaml_dict: dict) -> None:
                 },
             },
         },
+        "include": {
+            "type": "list",
+            "schema": {"type": "string"},
+            "required": False,
+            "empty": False,
+        },
+    }
+
+
+def _get_general_sch() -> dict:
+    """Return the cerberus schema for runbook 'general' section properties. To be used
+    in the top level, or in a separated section."""
+    return {
         "sim": {
             "type": "string",
             "allowed": [
@@ -256,19 +185,42 @@ def _validate_yaml_schema(yaml_dict: dict) -> None:
             "keysrules": {"type": "string", "empty": False},
             "required": False,
         },
-        "include": {
-            "type": "list",
-            "schema": {"type": "string"},
-            "required": False,
-            "empty": False,
-        },
     }
+
+
+def _validate_yaml_schema(yaml_dict: dict) -> None:
+    """Validate the structure of a YAML dictionary against the cocoman Runbook schema.
+
+    Uses 'cerberus' to verify that the provided YAML dictionary adheres to the expected
+    schema structure, including valid keys, value types, and allowed options.
+
+    Args:
+        yaml_dict: The YAML dictionary to be validated.
+
+    Raises:
+        RbValidationError: If the provided YAML dictionary does not match the expected
+            schema.
+    """
+    base_sch = _get_base_sch()
+    gen_sch = _get_general_sch()
+
+    if "general" in yaml_dict:
+        rb_schema = {
+            **base_sch,
+            "general": {"type": "dict", "schema": gen_sch, "required": True},
+        }
+    else:
+        rb_schema = {**base_sch, **gen_sch}
+
     sch_valid = Validator()
     if sch_valid.validate(yaml_dict, rb_schema) is False:
         raise RbValidationError(
             0,
             f"schema validation of parsed YAML failed\n{sch_valid.errors}",
         )
+
+
+# RUNBOOK PROPERTIES VALIDATION #
 
 
 def _validate_paths(
@@ -335,9 +287,10 @@ def _validate_paths(
 
     # BUILD AND TEST ARGS
     for args_name in ["build_args", "test_args"]:
-        rb_dict[args_name] = {
+        base_dict = rb_dict if not "general" in rb_dict else rb_dict["general"]
+        base_dict[args_name] = {
             k: (expandvars(expanduser(v)) if isinstance(v, str) else v)
-            for k, v in rb_dict.get(args_name, {}).items()
+            for k, v in base_dict.get(args_name, {}).items()
         }
 
     # Check if the provided paths exist, and if they are correctly set
@@ -427,30 +380,28 @@ def load_runbook(file_path: Path) -> Runbook:
         with open(file_path, "r", encoding="utf-8") as f_handler:
             rb_dict = safe_load(f_handler)
     except OSError as excp:
-        raise RbFileError(0, excp)
+        raise RbFileError(0, excp) from excp
     except (MarkedYAMLError, YAMLError) as excp:
-        raise RbYAMLError(0, excp)
+        raise RbYAMLError(0, excp) from excp
 
     # Validate YAML schema and paths
     rb_dict: dict
-    try:
-        _validate_yaml_schema(rb_dict)
-        _validate_paths(rb_dict=rb_dict, yaml_path=str(file_path.parent))
-        validate_stages_args(rb_dict.get("test_args", {}), Simulator.test)
-        validate_stages_args(rb_dict.get("build_args", {}), Simulator.build)
-        for _, tb_info in rb_dict["tbs"].items():
-            validate_stages_args(tb_info.get("test_args", {}), Simulator.test)
-            validate_stages_args(tb_info.get("build_args", {}), Simulator.build)
-    except RbValidationError as excp:
-        raise excp
+    _validate_yaml_schema(rb_dict)
+    _validate_paths(rb_dict=rb_dict, yaml_path=str(file_path.parent))
+    base_dict = rb_dict if not "general" in rb_dict else rb_dict["general"]
+    validate_stages_args(base_dict.get("test_args", {}), Simulator.test)
+    validate_stages_args(base_dict.get("build_args", {}), Simulator.build)
+    for _, tb_info in rb_dict["tbs"].items():
+        validate_stages_args(tb_info.get("test_args", {}), Simulator.test)
+        validate_stages_args(tb_info.get("build_args", {}), Simulator.build)
 
     # Build Runbook and Testbench objects
     rbook = Runbook(
-        sim=rb_dict["sim"],
+        sim=base_dict["sim"],
         srcs=rb_dict["srcs"],
         include=rb_dict.get("include", []),
-        test_args=rb_dict.get("test_args", {}),
-        build_args=rb_dict.get("build_args", {}),
+        test_args=base_dict.get("test_args", {}),
+        build_args=base_dict.get("build_args", {}),
         tbs={
             name: Testbench(
                 build_args=info.get("build_args", {}),

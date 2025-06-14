@@ -9,7 +9,7 @@ testing.
 from importlib.util import find_spec, module_from_spec
 from sys import path as sys_path
 from types import ModuleType
-from cocoregman.runbook import Runbook, Testbench
+from cocoregman.datatypes import Runbook, Testbench
 
 
 class TbEnvError(Exception):
