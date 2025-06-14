@@ -21,51 +21,11 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.table import Table
 from cocoregman.datatypes import Runbook
+from cocoregman.errors import CocomanNameError
 from cocoregman.tbenv import load_includes, load_n_import_tb
 
 
-# EXCEPTIONS
-
-
-class CocomanError(Exception):
-    """Base exception class for errors encountered during command-line processing."""
-
-    def __init__(self, err_prefix: str, tag_id: int, message: str) -> None:
-        """Initialize a generic CocomanError with a given message.
-
-        Args:
-            err_prefix: The sub-error prefix name.
-            tag_id: The specific error tag number id.
-            message: Description of the error.
-        """
-        super().__init__(message)
-        self.prefix = err_prefix
-        self.tag_id = tag_id
-        self.message = message
-
-    def __str__(self) -> str:
-        """Return a string representation of the error.
-
-        Returns:
-            The error message.
-        """
-        return f"CM{self.prefix}-{self.tag_id}: {self.message}"
-
-
-class CocomanNameError(CocomanError):
-    """Raised when an unrecognized testbench or test name is found."""
-
-    def __init__(self, tag_id: int, message: str) -> None:
-        """Initialize a CocomanNameError with a prefixed message.
-
-        Args:
-            tag_id: The specific error tag number id.
-            message: Description of the naming-related error.
-        """
-        super().__init__("N", tag_id=tag_id, message=message)
-
-
-# AUX
+# AUX #
 
 
 def _check_testbench_name(rbook: Runbook, tb_name: str) -> None:
@@ -113,7 +73,7 @@ def str_in_regex_list(text: str, regexs: List[str]) -> bool:
     return any(re_fullmatch(rgx, text) for rgx in regexs)
 
 
-# COMMANDS
+# COMMANDS #
 
 
 def cmd_list(rbook: Runbook) -> None:

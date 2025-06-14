@@ -10,47 +10,7 @@ from importlib.util import find_spec, module_from_spec
 from sys import path as sys_path
 from types import ModuleType
 from cocoregman.datatypes import Runbook, Testbench
-
-
-class TbEnvError(Exception):
-    """Base exception class for errors encountered during testbench environment
-    configuration."""
-
-    def __init__(self, err_prefix: str, tag_id: int, message: str) -> None:
-        """Initialize a generic TbEnverror with a given message.
-
-        Args:
-            err_prefix: The sub-error prefix name.
-            tag_id: The specific error tag number id.
-            message: Description of the error.
-        """
-        super().__init__(message)
-        self.prefix = err_prefix
-        self.tag_id = tag_id
-        self.message = message
-
-    def __str__(self) -> str:
-        """Return a string representation of the error.
-
-        Returns:
-            The error message.
-        """
-        return f"TE{self.prefix}-{self.tag_id}: {self.message}"
-
-
-class TbEnvImportError(TbEnvError):
-    """Raised when a import-related error occurs during testbench environment
-    configuration."""
-
-    def __init__(self, tag_id: int, message: str) -> None:
-        """Initialize a TbEnvImportError with a prefixed message.
-
-        Args:
-            tag_id: The specific error tag number id.
-            message: Description of the import-related error.
-        """
-        super().__init__("I", tag_id=tag_id, message=message)
-
+from cocoregman.errors import TbEnvImportError
 
 def load_includes(rbook: Runbook) -> None:
     """Add include directories from a Runbook to the Python module search path.

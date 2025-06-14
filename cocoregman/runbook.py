@@ -22,74 +22,7 @@ filterwarnings("default")
 
 from yaml import MarkedYAMLError, safe_load, YAMLError
 from cocoregman.datatypes import Runbook, Testbench
-
-
-# EXCEPTIONS #
-
-
-class RbError(Exception):
-    """Base exception class for errors encountered during runbook processing."""
-
-    def __init__(self, err_prefix: str, tag_id: int, message: str) -> None:
-        """Initialize a generic RbError with a given message.
-
-        Args:
-            err_prefix: The sub-error prefix name.
-            tag_id: The specific error tag number id.
-            message: Description of the error.
-        """
-        super().__init__(message)
-        self.prefix = err_prefix
-        self.tag_id = tag_id
-        self.message = message
-
-    def __str__(self) -> str:
-        """Return a string representation of the error.
-
-        Returns:
-            The error message.
-        """
-        return f"RB{self.prefix}-{self.tag_id}: {self.message}"
-
-
-class RbFileError(RbError):
-    """Raised when a file-related error occurs while loading the runbook."""
-
-    def __init__(self, tag_id: int, message: str) -> None:
-        """Initialize a RbFileError with a prefixed message.
-
-        Args:
-            tag_id: The specific error tag number id.
-            message: Description of the file-related error.
-        """
-        super().__init__(err_prefix="F", tag_id=tag_id, message=message)
-
-
-class RbValidationError(RbError):
-    """Raised when a runbook fails validation due to schema or path issues."""
-
-    def __init__(self, tag_id: int, message: str) -> None:
-        """Initialize a RbValidationError with a prefixed message.
-
-        Args:
-            tag_id: The specific error tag number id.
-            message: Description of the validation-related error.
-        """
-        super().__init__(err_prefix="V", tag_id=tag_id, message=message)
-
-
-class RbYAMLError(RbError):
-    """Raised when a YAML-specific error occurs during runbook parsing."""
-
-    def __init__(self, tag_id: int, message: str) -> None:
-        """Initialize a RbYAMLError with a prefixed message.
-
-        Args:
-            tag_id: The specific error tag number id.
-            message: Description of the YAML-related error.
-        """
-        super().__init__(err_prefix="Y", tag_id=tag_id, message=message)
-
+from cocoregman.errors import RbFileError, RbValidationError, RbYAMLError
 
 # SCHEMA VALIDATION #
 
