@@ -77,3 +77,10 @@ class Runbook:
             tb_str = "\n    ".join(str(tb_info).splitlines())
             pr_str += f"\n  {tb_name}\n    {tb_str}"
         return pr_str
+
+    def __contains__(self, name: str) -> bool:
+        """Return True if the provided string parameter is the name of a testbench
+        contained in the runbook's instance. Otherwise, return False."""
+        if not isinstance(name, str):
+            return NotImplemented
+        return name in self.tbs

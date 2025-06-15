@@ -28,23 +28,6 @@ from cocoregman.tbenv import load_includes, load_n_import_tb
 # AUX #
 
 
-def _check_testbench_name(rbook: Runbook, tb_name: str) -> None:
-    """Check if a testbench name exists in the provided Runbook.
-
-    Args:
-        rbook: The Runbook to inspect.
-        tb_name: The testbench name to check.
-
-    Raises:
-        CocomanNameError: If the testbench name is not found in the Runbook.
-    """
-    if tb_name not in rbook.tbs:
-        valid_tbs = ", ".join(rbook.tbs.keys())
-        raise CocomanNameError(
-            0, f"testbench  '{tb_name}' not found\navailable: {valid_tbs}"
-        )
-
-
 def _get_test_names(tb_pkg: ModuleType) -> List[str]:
     """Retrieve test names from a testbench module.
 
@@ -150,7 +133,11 @@ def cmd_list_testbench(rbook: Runbook, tb_name: str) -> None:
         CocomanNameError: If the testbench name is invalid.
         TbEnvImportError: If the top testbench module could not be imported.
     """
-    _check_testbench_name(rbook=rbook, tb_name=tb_name)
+    if tb_name not in rbook:
+        raise CocomanNameError(
+            0,
+            f"'{tb_name}' not found\navailable tbs: {', '.join(rbook.tbs.keys())}",
+        )
     load_includes(rbook)
     tb_info = rbook.tbs[tb_name]
     tb_pkg = load_n_import_tb(tb_info)
@@ -252,7 +239,11 @@ def cmd_run(
     console = Console()
 
     for name in tb_names:
-        _check_testbench_name(rbook=rbook, tb_name=name)
+        if name not in rbook:
+            raise CocomanNameError(
+                0,
+                f"'{name}' not found\navailable tbs: {', '.join(rbook.tbs.keys())}",
+            )
         tb_info = rbook.tbs[name]
         tb_pkg = load_n_import_tb(tb_info)
 
