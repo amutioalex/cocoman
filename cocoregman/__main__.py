@@ -10,7 +10,7 @@ from pathlib import Path
 from cocoregman.cli.argp import CocomanArgParser
 from cocoregman.cli.commands import cmd_list, cmd_list_testbench, cmd_run
 from cocoregman.errors import CocomanError, RbError, TbEnvError
-from cocoregman.runbook import load_runbook
+from cocoregman.runbook import Runbook
 
 
 def _exec_thread() -> None:
@@ -35,7 +35,7 @@ def _exec_thread() -> None:
             0, f"provided runbook path is not a file '{str(rb_path)}'"
         )
     try:
-        rbook = load_runbook(rb_path)
+        rbook = Runbook.load_yaml(rb_path)
     except RbError as excp:
         raise excp
 

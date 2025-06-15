@@ -20,8 +20,8 @@ from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.table import Table
-from cocoregman.datatypes import Runbook
 from cocoregman.errors import CocomanNameError
+from cocoregman.runbook import Runbook
 from cocoregman.tbenv import load_includes, load_n_import_tb
 
 

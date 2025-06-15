@@ -9,8 +9,10 @@ testing.
 from importlib.util import find_spec, module_from_spec
 from sys import path as sys_path
 from types import ModuleType
-from cocoregman.datatypes import Runbook, Testbench
+from cocoregman.datatypes import Testbench
 from cocoregman.errors import TbEnvImportError
+from cocoregman.runbook import Runbook
+
 
 def load_includes(rbook: Runbook) -> None:
     """Add include directories from a Runbook to the Python module search path.
@@ -52,7 +54,7 @@ def load_n_import_tb(tb_info: Testbench) -> ModuleType:
     try:
         spec = find_spec(f"{tb_info.path.name}.{tb_info.tb_top}")
     except ValueError as excp:
-        raise TbEnvImportError(0, excp)
+        raise TbEnvImportError(0, excp) from excp
     if spec is None:
         raise TbEnvImportError(
             1,
