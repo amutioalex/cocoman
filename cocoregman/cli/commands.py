@@ -1,11 +1,11 @@
 # pylint: disable=wrong-import-position, import-error, too-many-locals
-# pylint: disable=too-many-positional-arguments, too-many-arguments
+# pylint: disable=too-many-positional-arguments, too-many-arguments, too-many-statements
 """Commands module for the cocoman command-line interface (CLI)."""
 
 from pathlib import Path
 from re import fullmatch as re_fullmatch
 from types import ModuleType
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 from warnings import filterwarnings
 from cocotb.decorators import test as cctb_test
 
@@ -59,92 +59,17 @@ def str_in_regex_list(text: str, regexs: List[str]) -> bool:
 # COMMANDS #
 
 
-def cmd_list(rbook: Runbook) -> None:
-    """Display a general overview of the provided Runbook and its testbenches.
+def cmd_list(rbook: Runbook, tb_name: Union[str, None] = None) -> None:
+    """Display a general overview or specific testbench of the provided runbook.
 
     Args:
-        rbook: The Runbook object to display information from.
-    """
-    property_c, value_c, accent_c = "bold cornflower_blue", "white", "light_sea_green"
-    console = Console()
-
-    # RUNBOOK CONFIGURATION #
-    console.print()
-    rb_table = Table(
-        box=box.SIMPLE,
-        show_header=False,
-        title="RUNBOOK CONFIGURATION",
-        title_justify="left",
-        title_style="u bold",
-    )
-    rb_table.add_column(style=property_c)
-    rb_table.add_column(style=value_c)
-    rb_table.add_row("Simulator", rbook.sim, end_section=True)
-
-    if rbook.srcs:
-        src_table = Table(show_header=False)
-        src_table.add_column(style=accent_c)
-        src_table.add_column(style=value_c)
-        for index, path in rbook.srcs.items():
-            src_table.add_row(str(index), str(path))
-        rb_table.add_row("Sources", src_table, end_section=True)
-
-    if rbook.include:
-        rb_table.add_row(
-            "Include", "\n".join(map(str, rbook.include)), end_section=True
-        )
-    console.print(rb_table, justify="left")
-
-    # TESTBENCHES #
-    console.print()
-    tb_table = Table(
-        box=box.SIMPLE,
-        header_style="italic",
-        show_header=True,
-        title="TESTBENCHES",
-        title_justify="left",
-        title_style="u bold",
-    )
-    tb_table.add_column(header="Name", style=property_c)
-    tb_table.add_column(header="RTL Top", style=value_c)
-    tb_table.add_column(header="TB Top", style=value_c)
-    tb_table.add_column(header="Sources", style=accent_c)
-
-    for tb_name, tb_info in rbook.tbs.items():
-        tb_table.add_row(
-            tb_name,
-            tb_info.rtl_top,
-            tb_info.tb_top,
-            ", ".join(map(str, tb_info.srcs)),
-        )
-
-    console.print(tb_table, justify="left")
-    console.print()
-
-
-def cmd_list_testbench(rbook: Runbook, tb_name: str) -> None:
-    """Display detailed information about a specific testbench within a Runbook.
-
-    Args:
-        rbook: The Runbook containing the testbenches.
-        tb_name: The name of the testbench to inspect.
+        rbook: The main runbook object.
+        tb_name: The name of the specific testbench to inspect, if any.
 
     Raises:
         CocomanNameError: If the testbench name is invalid.
         TbEnvImportError: If the top testbench module could not be imported.
     """
-    if tb_name not in rbook:
-        raise CocomanNameError(
-            0,
-            f"'{tb_name}' not found\navailable tbs: {', '.join(rbook.tbs.keys())}",
-        )
-    load_includes(rbook)
-    tb_info = rbook.tbs[tb_name]
-    tb_pkg = load_n_import_tb(tb_info)
-    tb_tests = _get_test_names(tb_pkg)
-
-    property_c, value_c, accent_c = "bold cornflower_blue", "white", "light_sea_green"
-    console = Console()
 
     def get_docstr(obj: Any) -> str:
         """Safely return the docstring of an object.
@@ -157,51 +82,105 @@ def cmd_list_testbench(rbook: Runbook, tb_name: str) -> None:
         """
         return obj.__doc__ if obj.__doc__ else ""
 
-    # Main Table
-    console.print()
-    tb_table = Table(
+    property_c, value_c, accent_c = "bold cornflower_blue", "white", "light_sea_green"
+    console = Console()
+
+    main_table = Table(
         box=box.SIMPLE,
         show_header=False,
-        title=tb_name.upper(),
         title_justify="left",
         title_style="u bold",
     )
-    tb_table.add_column(style=property_c)
-    tb_table.add_column(style=value_c)
+    main_table.add_column(style=property_c)
+    main_table.add_column(style=value_c)
 
-    # Description
-    tb_table.add_row(
-        "Description",
-        Markdown(get_docstr(tb_pkg), style=f"{value_c} italic dim"),
-        end_section=True,
-    )
+    # LIST TESTBENCH
+    if tb_name:
+        if tb_name not in rbook:
+            raise CocomanNameError(
+                0, f"'{tb_name}' not found\nAvailable: {', '.join(rbook.tbs)}"
+            )
+        load_includes(rbook)
+        tb_info = rbook.tbs[tb_name]
+        tb_pkg = load_n_import_tb(tb_info)
+        tb_tests = _get_test_names(tb_pkg)
 
-    # Module Information
-    mod_table = Table(box=box.SIMPLE, header_style="italic", show_header=True)
-    mod_table.add_column("TB Top", style=value_c)
-    mod_table.add_column("RTL Top", style=value_c)
-    mod_table.add_column("HDL", style=value_c)
-    mod_table.add_row(tb_info.tb_top, tb_info.rtl_top, tb_info.hdl)
-    tb_table.add_row("Module", mod_table, end_section=True)
+        main_table.title = tb_name.upper()
 
-    # Path
-    tb_table.add_row("Path", str(tb_info.path), end_section=True)
-
-    # Tests
-    tst_table = Table(show_header=False)
-    tst_table.add_column(style=accent_c)
-    tst_table.add_column(style=value_c)
-
-    for tst in tb_tests:
-        tst_func = getattr(tb_pkg, tst)
-        tst_table.add_row(
-            tst, Markdown(get_docstr(tst_func), style=f"{value_c} italic dim")
+        # Description
+        main_table.add_row(
+            "Description",
+            Markdown(get_docstr(tb_pkg), style=f"{value_c} italic dim"),
+            end_section=True,
         )
 
-    tb_table.add_row("Tests", tst_table, end_section=True)
+        # Module Info
+        aux_table = Table(box=box.SIMPLE, header_style="italic", show_header=True)
+        aux_table.add_column("TB Top", style=value_c)
+        aux_table.add_column("RTL Top", style=value_c)
+        aux_table.add_column("HDL", style=value_c)
+        aux_table.add_row(tb_info.tb_top, tb_info.rtl_top, tb_info.hdl)
+        main_table.add_row("Module", aux_table, end_section=True)
 
-    # Display
-    console.print(tb_table, justify="left")
+        # Path
+        main_table.add_row("Path", str(tb_info.path), end_section=True)
+
+        # Tests
+        aux_table = Table(show_header=False)
+        aux_table.add_column(style=accent_c)
+        aux_table.add_column(style=value_c)
+        for tst in tb_tests:
+            tst_func = getattr(tb_pkg, tst)
+            aux_table.add_row(
+                tst, Markdown(get_docstr(tst_func), style=f"{value_c} italic dim")
+            )
+        main_table.add_row("Tests", aux_table, end_section=True)
+
+    # LIST RUNBOOK OVERVIEW
+    else:
+        main_table.title = "RUNBOOK CONFIGURATION"
+        main_table.add_row("Simulator", rbook.sim, end_section=True)
+
+        if rbook.srcs:
+            aux_table = Table(show_header=False)
+            aux_table.add_column(style=accent_c)
+            aux_table.add_column(style=value_c)
+            for index, path in rbook.srcs.items():
+                aux_table.add_row(str(index), str(path))
+            main_table.add_row("Sources", aux_table, end_section=True)
+
+        if rbook.include:
+            main_table.add_row(
+                "Include", "\n".join(map(str, rbook.include)), end_section=True
+            )
+
+        console.print()
+        console.print(main_table, justify="left")
+        console.print()
+
+        main_table = Table(
+            box=box.SIMPLE,
+            header_style="italic",
+            show_header=True,
+            title="TESTBENCHES",
+            title_justify="left",
+            title_style="u bold",
+        )
+        main_table.add_column(header="Name", style=property_c)
+        main_table.add_column(header="RTL Top", style=value_c)
+        main_table.add_column(header="TB Top", style=value_c)
+        main_table.add_column(header="Sources", style=accent_c)
+
+        for name, tb_info in rbook.tbs.items():
+            main_table.add_row(
+                name,
+                tb_info.rtl_top,
+                tb_info.tb_top,
+                ", ".join(map(str, tb_info.srcs)),
+            )
+
+    console.print()
+    console.print(main_table, justify="left")
     console.print()
 
 

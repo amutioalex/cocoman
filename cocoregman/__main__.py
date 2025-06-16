@@ -8,7 +8,7 @@ the runbook, and dispatches execution to the appropriate commands.
 from argparse import ArgumentTypeError
 from pathlib import Path
 from cocoregman.cli.argp import CocomanArgParser
-from cocoregman.cli.commands import cmd_list, cmd_list_testbench, cmd_run
+from cocoregman.cli.commands import cmd_list, cmd_run
 from cocoregman.errors import CocomanError, RbError, TbEnvError
 from cocoregman.runbook import Runbook
 
@@ -45,7 +45,7 @@ def _exec_thread() -> None:
             cmd_list(rbook)
         else:
             try:
-                cmd_list_testbench(rbook=rbook, tb_name=p_args.testbench[0])
+                cmd_list(rbook, p_args.testbench[0])
             except (CocomanError, TbEnvError) as excp:
                 raise excp
 
