@@ -108,6 +108,7 @@ def _get_general_sch() -> dict:
             ],
             "required": True,
         },
+        "title": {"type": "string", "required": False, "empty": False},
         "build_args": {
             "type": "dict",
             "keysrules": {"type": "string", "empty": False},
@@ -285,6 +286,7 @@ class Runbook:
         srcs: Mapping of source file indices to their absolute paths.
         tbs: Dictionary of testbench names mapped to Testbench objects.
         test_args: Global test-specific arguments for all cocotb testbenches.
+        title: Runbook description title.
     """
 
     build_args: Dict[str, Any] = field(default_factory=dict)
@@ -293,10 +295,12 @@ class Runbook:
     srcs: Dict[int, Path] = field(default_factory=dict)
     tbs: Dict[str, Testbench] = field(default_factory=dict)
     test_args: Dict[str, Any] = field(default_factory=dict)
+    title: str = ""
 
     def __str__(self):
         """Return the current Runbook instance as a string."""
         out = (
+            f"title: {self.title}\n"
             f"sim: {self.sim}\n"
             f"srcs: {self.srcs}\n"
             f"include: {','.join(map(str, self.include))}\n"
@@ -356,6 +360,7 @@ class Runbook:
             _validate_stages_args(tb_info.get("build_args", {}), Simulator.build)
 
         return Runbook(
+            title=general_dict.get("title", ""),
             sim=general_dict["sim"],
             srcs=rb_dict["srcs"],
             include=rb_dict.get("include", []),

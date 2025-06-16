@@ -139,6 +139,7 @@ def cmd_list(rbook: Runbook, tb_name: Union[str, None] = None) -> None:
     # LIST RUNBOOK OVERVIEW
     else:
         main_table.title = "RUNBOOK CONFIGURATION"
+
         main_table.add_row("Simulator", rbook.sim, end_section=True)
 
         if rbook.srcs:
@@ -154,6 +155,9 @@ def cmd_list(rbook: Runbook, tb_name: Union[str, None] = None) -> None:
                 "Include", "\n".join(map(str, rbook.include)), end_section=True
             )
 
+        console.print()
+        if rbook.title:
+            console.print(f"[bold]{rbook.title}[/bold]")
         console.print()
         console.print(main_table, justify="left")
         console.print()

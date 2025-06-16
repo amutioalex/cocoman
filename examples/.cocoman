@@ -1,4 +1,5 @@
 general:
+  title: My regression example!
   sim: icarus
   build_args:
     build_dir: ./simdir
