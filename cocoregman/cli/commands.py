@@ -4,10 +4,9 @@
 
 from pathlib import Path
 from re import fullmatch as re_fullmatch
-from types import ModuleType
 from typing import Any, Dict, List, Union
 from warnings import filterwarnings
-from cocotb.decorators import test as cctb_test
+
 
 # Suppress warning when importing from cocotb.runner
 filterwarnings("ignore")
@@ -22,27 +21,13 @@ from rich.markdown import Markdown
 from rich.table import Table
 from cocoregman.errors import CocomanNameError
 from cocoregman.runbook import Runbook
-from cocoregman.tbenv import load_includes, load_n_import_tb
+from cocoregman.tbenv import get_test_names, load_includes, load_n_import_tb
 
 
 # AUX #
 
 
-def _get_test_names(tb_pkg: ModuleType) -> List[str]:
-    """Retrieve test names from a testbench module.
-
-    Args:
-        tb_pkg: The Python module to inspect.
-
-    Returns:
-        A list of test names identified within the module.
-    """
-    return [
-        name for name in dir(tb_pkg) if isinstance(getattr(tb_pkg, name), cctb_test)
-    ]
-
-
-def str_in_regex_list(text: str, regexs: List[str]) -> bool:
+def _str_in_regex_list(text: str, regexs: List[str]) -> bool:
     """Check if a provided string matches fully any of the valid regular expressions of
     a given list.
 
@@ -103,7 +88,7 @@ def cmd_list(rbook: Runbook, tb_name: Union[str, None] = None) -> None:
         load_includes(rbook)
         tb_info = rbook.tbs[tb_name]
         tb_pkg = load_n_import_tb(tb_info)
-        tb_tests = _get_test_names(tb_pkg)
+        tb_tests = get_test_names(tb_pkg)
 
         main_table.title = tb_name.upper()
 
@@ -232,20 +217,20 @@ def cmd_run(
 
         # Filter testbench by tags
         if include_tags and not any(
-            str_in_regex_list(i, include_tags) for i in tb_info.tags
+            _str_in_regex_list(i, include_tags) for i in tb_info.tags
         ):
             continue
         if exclude_tags and any(
-            str_in_regex_list(i, include_tags) for i in tb_info.tags
+            _str_in_regex_list(i, include_tags) for i in tb_info.tags
         ):
             continue
 
         # Filter test names
-        tstcases = _get_test_names(tb_pkg)
+        tstcases = get_test_names(tb_pkg)
         if include_tests:
-            tstcases = [i for i in tstcases if str_in_regex_list(i, include_tests)]
+            tstcases = [i for i in tstcases if _str_in_regex_list(i, include_tests)]
         if exclude_tests:
-            tstcases = [i for i in tstcases if str_in_regex_list(i, exclude_tests)]
+            tstcases = [i for i in tstcases if _str_in_regex_list(i, exclude_tests)]
         tstcases = [i for i in tstcases for _ in range(ntimes)]
         if not tstcases:
             continue

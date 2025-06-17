@@ -9,9 +9,25 @@ testing.
 from importlib.util import find_spec, module_from_spec
 from sys import path as sys_path
 from types import ModuleType
+from typing import List
+from cocotb.decorators import test as cctb_test
 from cocoregman.datatypes import Testbench
 from cocoregman.errors import TbEnvImportError
 from cocoregman.runbook import Runbook
+
+
+def get_test_names(tb_pkg: ModuleType) -> List[str]:
+    """Retrieve test names from a testbench module.
+
+    Args:
+        tb_pkg: The Python module to inspect.
+
+    Returns:
+        A list of test names identified within the module.
+    """
+    return [
+        name for name in dir(tb_pkg) if isinstance(getattr(tb_pkg, name), cctb_test)
+    ]
 
 
 def load_includes(rbook: Runbook) -> None:
