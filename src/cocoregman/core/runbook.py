@@ -22,7 +22,7 @@ from cocotb.runner import Simulator
 filterwarnings("default")
 
 from yaml import MarkedYAMLError, safe_load, YAMLError
-from cocoregman.datatypes import Testbench
+from cocoregman.core.datatypes import Testbench
 from cocoregman.errors import RbFileError, RbValidationError, RbYAMLError
 
 

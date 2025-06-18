@@ -9,8 +9,8 @@ from argparse import ArgumentTypeError
 from pathlib import Path
 from cocoregman.cli.argp import CocomanArgParser
 from cocoregman.cli.commands import cmd_list, cmd_run
+from cocoregman.core.runbook import Runbook
 from cocoregman.errors import CocomanError, RbError, TbEnvError
-from cocoregman.runbook import Runbook
 
 
 def _exec_thread() -> None:

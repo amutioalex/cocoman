@@ -20,8 +20,8 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.table import Table
 from cocoregman.errors import CocomanNameError
-from cocoregman.runbook import Runbook
-from cocoregman.tbenv import get_test_names, load_includes, load_n_import_tb
+from cocoregman.core.runbook import Runbook
+from cocoregman.core.env import get_test_names, load_includes, load_n_import_tb
 
 
 # AUX #

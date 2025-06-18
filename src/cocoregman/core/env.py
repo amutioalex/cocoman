@@ -11,9 +11,9 @@ from sys import path as sys_path
 from types import ModuleType
 from typing import List
 from cocotb.decorators import test as cctb_test
-from cocoregman.datatypes import Testbench
+from cocoregman.core.datatypes import Testbench
+from cocoregman.core.runbook import Runbook
 from cocoregman.errors import TbEnvImportError
-from cocoregman.runbook import Runbook
 
 
 def get_test_names(tb_pkg: ModuleType) -> List[str]:
