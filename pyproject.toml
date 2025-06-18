@@ -6,7 +6,8 @@ requires = ["setuptools>=76.0", "wheel>=0.45"]
 name = "cocoregman"
 description = "Regression runner for cocotb-based verification workflows"
 readme = "README.md"
-license = {file = "LICENSE"}
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 authors = [{name = "amutioalex"}]
 maintainers = [{name = "amutioalex"}]
 
@@ -19,7 +20,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Natural Language :: English",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -28,15 +28,19 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Framework :: cocotb",
 ]
 keywords = ["testbench", "verification", "cocotb"]
+
+[project.urls]
+Homepage = "https://www.github.com/amutioalex/cocoman"
+Repository = "https://www.github.com/amutioalex/cocoman.git"
 
 [project.scripts]
 cmn = "cocoregman.__main__:main"
 
-[tool.setuptools.dynamic]
-version = {attr = "cocoregman.__version__"}
+[tool.setuptools]
+package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["cocoregman"]
+where = ["src"]
