@@ -83,7 +83,7 @@ def cmd_list(rbook: Runbook, tb_name: Union[str, None] = None) -> None:
     if tb_name:
         if tb_name not in rbook:
             raise CocomanNameError(
-                0, f"'{tb_name}' not found\nAvailable: {', '.join(rbook.tbs)}"
+                f"'{tb_name}' not found\nAvailable: {', '.join(rbook.tbs)}"
             )
         load_includes(rbook)
         tb_info = rbook.tbs[tb_name]
@@ -209,7 +209,6 @@ def cmd_run(
     for name in tb_names:
         if name not in rbook:
             raise CocomanNameError(
-                0,
                 f"'{name}' not found\navailable tbs: {', '.join(rbook.tbs.keys())}",
             )
         tb_info = rbook.tbs[name]

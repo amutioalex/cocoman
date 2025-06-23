@@ -22,7 +22,7 @@ def validate_yaml_schema(yaml_dict: dict) -> None:
     schema = get_runbook_schema("general" in yaml_dict)
     sch_valid = Validator()
     if not sch_valid.validate(yaml_dict, schema):
-        raise RbValidationError(0, f"YAML schema validation failed\n{sch_valid.errors}")
+        raise RbValidationError(f"YAML schema validation failed\n{sch_valid.errors}")
 
 
 def validate_paths(
@@ -105,9 +105,9 @@ def validate_paths(
             missing_paths.append(str(p))
 
     if missing_paths:
-        raise RbValidationError(1, f"Non-existent paths\n{missing_paths}")
+        raise RbValidationError(f"Non-existent paths\n{missing_paths}")
     if unregistered:
-        raise RbValidationError(2, f"Unregistered source indices:\n{unregistered}")
+        raise RbValidationError(f"Unregistered source indices:\n{unregistered}")
 
 
 def validate_stages_args(args: Dict[str, Any], sim_method: Callable) -> None:
@@ -140,7 +140,6 @@ def validate_stages_args(args: Dict[str, Any], sim_method: Callable) -> None:
     for key in args:
         if key not in valid_args:
             raise RbValidationError(
-                3,
                 f"Invalid key '{key}' in '{sim_method.__name__}' arguments. "
                 f"Allowed: {valid_args}",
             )

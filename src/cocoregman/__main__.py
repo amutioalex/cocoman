@@ -31,9 +31,7 @@ def _exec_thread() -> None:
     if rb_path.is_dir():
         rb_path = rb_path / ".cocoman"
     if not rb_path.is_file():
-        raise ArgumentTypeError(
-            0, f"provided runbook path is not a file '{str(rb_path)}'"
-        )
+        raise ArgumentTypeError(f"provided runbook path is not a file '{str(rb_path)}'")
     try:
         rbook = Runbook.load_yaml(rb_path)
     except RbError as excp:

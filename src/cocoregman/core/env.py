@@ -69,10 +69,9 @@ def load_n_import_tb(tb_info: Testbench) -> ModuleType:
     try:
         spec = find_spec(f"{tb_info.path.name}.{tb_info.tb_top}")
     except ValueError as excp:
-        raise TbEnvImportError(0, excp) from excp
+        raise TbEnvImportError(excp) from excp
     if spec is None:
         raise TbEnvImportError(
-            1,
             f"could not correctly import {tb_info.path.name}.{tb_info.tb_top}",
         )
     module = module_from_spec(spec)

@@ -133,9 +133,9 @@ class Runbook:
             with open(file_path, "r", encoding="utf-8") as f_handler:
                 rb_dict = safe_load(f_handler)
         except OSError as excp:
-            raise RbFileError(0, excp) from excp
+            raise RbFileError(excp) from excp
         except (MarkedYAMLError, YAMLError) as excp:
-            raise RbYAMLError(0, excp) from excp
+            raise RbYAMLError(excp) from excp
 
         # Validate YAML schema and paths
         validate_yaml_schema(rb_dict)
