@@ -1,4 +1,4 @@
-# pylint: disable=wrong-import-position, too-many-instance-attributes
+# pylint: disable=wrong-import-position, too-many-instance-attributes, import-error
 """Runbook parsing and validation module.
 
 This module provides tools to parse, validate, and convert runbook YAML files into
@@ -22,104 +22,8 @@ from cocotb.runner import Simulator
 filterwarnings("default")
 
 from yaml import MarkedYAMLError, safe_load, YAMLError
+from cocoregman.core.schema import get_runbook_schema
 from cocoregman.errors import RbFileError, RbValidationError, RbYAMLError
-
-
-# SCHEMA DEFINITION #
-
-
-def _get_base_sch() -> dict:
-    """Return base schema used for runbook validation, excluding general section."""
-    return {
-        "srcs": {
-            "type": "dict",
-            "keysrules": {"type": "integer", "coerce": int},
-            "valuesrules": {"type": "string", "empty": False},
-            "empty": False,
-            "required": False,
-        },
-        "tbs": {
-            "type": "dict",
-            "keysrules": {"type": "string"},
-            "valuesrules": {
-                "type": "dict",
-                "schema": {
-                    "srcs": {
-                        "type": "list",
-                        "required": False,
-                        "schema": {"type": "integer"},
-                        "empty": False,
-                    },
-                    "path": {"type": "string", "required": True, "empty": False},
-                    "rtl_top": {"type": "string", "required": False, "empty": False},
-                    "tb_top": {"type": "string", "required": True, "empty": False},
-                    "hdl": {
-                        "type": "string",
-                        "allowed": ["verilog", "vhdl"],
-                        "required": True,
-                    },
-                    "tags": {
-                        "type": "list",
-                        "required": False,
-                        "schema": {"type": "string"},
-                        "empty": False,
-                    },
-                    "build_args": {
-                        "type": "dict",
-                        "keysrules": {"type": "string", "empty": False},
-                        "required": False,
-                    },
-                    "test_args": {
-                        "type": "dict",
-                        "keysrules": {"type": "string", "empty": False},
-                        "required": False,
-                    },
-                },
-            },
-        },
-        "include": {
-            "type": "list",
-            "schema": {"type": "string"},
-            "required": False,
-            "empty": False,
-        },
-    }
-
-
-def _get_general_sch() -> dict:
-    """Return schema for the 'general' section of the runbook."""
-    return {
-        "sim": {
-            "type": "string",
-            "allowed": [
-                "icarus",
-                "verilator",
-                "vcs",
-                "riviera",
-                "questa",
-                "activehdl",
-                "modelsim",
-                "ius",
-                "xcelium",
-                "ghdl",
-                "nvc",
-                "cvc",
-            ],
-            "required": True,
-        },
-        "title": {"type": "string", "required": False, "empty": False},
-        "build_args": {
-            "type": "dict",
-            "keysrules": {"type": "string", "empty": False},
-            "required": False,
-        },
-        "test_args": {
-            "type": "dict",
-            "keysrules": {"type": "string", "empty": False},
-            "required": False,
-        },
-    }
-
 
 # VALIDATION FUNCTIONS #
 
@@ -134,14 +38,7 @@ def _validate_yaml_schema(yaml_dict: dict) -> None:
         RbValidationError: If the provided YAML dictionary does not match the expected
             schema.
     """
-    rb_schema = {**_get_base_sch()}
-
-    gen_sch = _get_general_sch()
-    if "general" in yaml_dict:
-        rb_schema["general"] = {"type": "dict", "schema": gen_sch, "required": True}
-    else:
-        rb_schema.update(gen_sch)
-
+    rb_schema = get_runbook_schema("general" in yaml_dict)
     sch_valid = Validator()
     if not sch_valid.validate(yaml_dict, rb_schema):
         raise RbValidationError(0, f"YAML schema validation failed\n{sch_valid.errors}")
