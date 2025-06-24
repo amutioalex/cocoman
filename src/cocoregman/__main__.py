@@ -28,40 +28,30 @@ def _exec_thread() -> None:
 
     # Obtain runbook
     rb_path: Path = p_args.runbook.resolve()
-    if rb_path.is_dir():
-        rb_path = rb_path / ".cocoman"
-    if not rb_path.is_file():
-        raise ArgumentTypeError(f"provided runbook path is not a file '{str(rb_path)}'")
-    try:
-        rbook = Runbook.load_yaml(rb_path)
-    except RbError as excp:
-        raise excp
+    rb_path = rb_path if rb_path.is_file() else rb_path / ".cocoman"
+    if not rb_path.exists():
+        raise ArgumentTypeError(
+            f"provided runbook path is not an existing file '{str(rb_path)}'"
+        )
+    rbook = Runbook.load_from_yaml(rb_path)
 
     # Commands
     if p_args.command == "list":
-        if not p_args.testbench:
-            cmd_list(rbook)
-        else:
-            try:
-                cmd_list(rbook, p_args.testbench[0])
-            except (CocomanError, TbEnvError) as excp:
-                raise excp
+        tb = None if not p_args.testbench else p_args.testbench[0]
+        cmd_list(rbook, tb)
 
     elif p_args.command == "run":
         tb_names = list(rbook.tbs.keys()) if not p_args.testbench else p_args.testbench
-        try:
-            cmd_run(
-                rbook=rbook,
-                dry=p_args.dry,
-                tb_names=tb_names,
-                ntimes=p_args.ntimes,
-                include_tests=p_args.include_tests,
-                exclude_tests=p_args.exclude_tests,
-                include_tags=p_args.include_tags,
-                exclude_tags=p_args.exclude_tags,
-            )
-        except (CocomanError, TbEnvError) as excp:
-            raise excp
+        cmd_run(
+            rbook=rbook,
+            dry=p_args.dry,
+            tb_names=tb_names,
+            ntimes=p_args.ntimes,
+            include_tests=p_args.include_tests,
+            exclude_tests=p_args.exclude_tests,
+            include_tags=p_args.include_tags,
+            exclude_tags=p_args.exclude_tags,
+        )
 
 
 def main() -> None:

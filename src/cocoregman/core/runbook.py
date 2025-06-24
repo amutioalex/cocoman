@@ -1,172 +1,236 @@
 # pylint: disable=wrong-import-position, too-many-instance-attributes, import-error
-"""Runbook parsing and validation module.
-
-This module provides tools to parse, validate, and convert runbook YAML files into
-structured runbook objects. It ensures the correctness of paths, schema, and simulation
-arguments required for regression management.
-"""
+"""Runbook and associated dataclasses declarations module."""
 
 from dataclasses import dataclass, field
+from os.path import expanduser, expandvars
 from pathlib import Path
 from typing import Any, Dict, List
-from warnings import filterwarnings
-
-# Suppress warning when importing from cocotb.runner
-filterwarnings("ignore")
-
 from cocotb.runner import Simulator
-
-filterwarnings("default")
-
 from yaml import MarkedYAMLError, safe_load, YAMLError
 from cocoregman.core.validation import (
     validate_paths,
+    validate_runbook,
     validate_stages_args,
-    validate_yaml_schema,
 )
 from cocoregman.errors import RbFileError, RbYAMLError
 
 
 @dataclass
 class Testbench:
-    """Dataclass representing a single Runbook Testbench.
+    """Represent a runbook testbench configuration.
 
     Attributes:
-        build_args: Dictionary of build-specific arguments for the cocotb testbench.
-        hdl: Hardware description language used.
         path: Absolute path to the directory containing the cocotb testbench module.
-        rtl_top: Top-level RTL module name to be simulated.
-        srcs: List of integers representing source file indices in the Runbook.
-        tags: List of strings of testbench tags for grouping and filtering.
+        srcs: List of source file indices used by the testbench.
         tb_top: Top-level Python module containing cocotb tests.
-        test_args: Dictionary of test-specific arguments for the cocotb testbench.
+        rtl_top: Top-level RTL module name.
+        hdl: Hardware description language.
+        build_args: Build-stage arguments.
+        test_args: Test-stage arguments.
+        tags: List of optional tags for filtering/grouping testbenches.
     """
 
-    build_args: Dict[str, Any] = field(default_factory=dict)
-    hdl: str = ""
     path: Path = Path("")
-    rtl_top: str = ""
     srcs: List[int] = field(default_factory=list)
-    tags: List[str] = field(default_factory=list)
     tb_top: str = ""
+    rtl_top: str = ""
+    hdl: str = ""
+    build_args: Dict[str, Any] = field(default_factory=dict)
     test_args: Dict[str, Any] = field(default_factory=dict)
+    tags: List[str] = field(default_factory=list)
 
     def __str__(self):
-        """Return the current Testbench instance as a string."""
+        """Return a string representation of the Testbench instance."""
         return (
-            f"tags: {','.join(self.tags)}\n"
-            f"hdl: {self.hdl}\n"
-            f"rtl_top: {self.rtl_top}\n"
             f"path: {self.path}\n"
+            f"srcs: {', '.join(map(str, self.srcs))}\n"
             f"tb_top: {self.tb_top}\n"
-            f"srcs: {','.join(map(str, self.srcs))}\n"
+            f"rtl_top: {self.rtl_top}\n"
+            f"hdl: {self.hdl}\n"
             f"build_args: {self.build_args}\n"
             f"test_args: {self.test_args}\n"
+            f"tags: {', '.join(self.tags)}\n"
         )
 
 
 @dataclass
 class Runbook:
-    """Dataclass representing a complete runbook configuration.
+    """Represent the full runbook metadata and configuration.
 
     Attributes:
-        build_args: Global build-specific arguments for all cocotb testbenches.
-        include: List of directories to be included in the Python path.
-        sim: Simulation tool to be used.
-        srcs: Mapping of source file indices to their absolute paths.
-        tbs: Dictionary of testbench names mapped to Testbench objects.
-        test_args: Global test-specific arguments for all cocotb testbenches.
-        title: Runbook description title.
+        title: Descriptive title of the runbook.
+        sim: Simulation tool name.
+        srcs: Mapping from source indices to file paths.
+        include: Directories to include in the Python path.
+        build_args: Global build-stage arguments.
+        test_args: Global test-stage arguments.
+        tbs: Mapping from testbench names to Testbench instance.
     """
 
-    build_args: Dict[str, Any] = field(default_factory=dict)
-    include: List[Path] = field(default_factory=list)
+    title: str = ""
     sim: str = ""
     srcs: Dict[int, Path] = field(default_factory=dict)
-    tbs: Dict[str, Testbench] = field(default_factory=dict)
+    include: List[Path] = field(default_factory=list)
+    build_args: Dict[str, Any] = field(default_factory=dict)
     test_args: Dict[str, Any] = field(default_factory=dict)
-    title: str = ""
+    tbs: Dict[str, Testbench] = field(default_factory=dict)
 
     def __str__(self):
-        """Return the current Runbook instance as a string."""
+        """Return a string representation of the Runbook instance."""
         out = (
             f"title: {self.title}\n"
             f"sim: {self.sim}\n"
             f"srcs: {self.srcs}\n"
-            f"include: {','.join(map(str, self.include))}\n"
+            f"include: {', '.join(map(str, self.include))}\n"
             f"build_args: {self.build_args}\n"
             f"test_args: {self.test_args}\n"
             f"tbs:"
         )
-        for tb_name, tb_info in self.tbs.items():
-            tb_str = "\n    ".join(str(tb_info).splitlines())
-            out += f"\n  {tb_name}\n    {tb_str}"
+        for name, tb in self.tbs.items():
+            tb_str = "\n    ".join(str(tb).splitlines())
+            out += f"\n  {name}\n    {tb_str}"
         return out
 
     def __contains__(self, name: str) -> bool:
-        """Return True if the provided string parameter is the name of a testbench
-        contained in the runbook's instance. Otherwise, return False."""
+        """Check whether the given name is a registered testbench."""
         return isinstance(name, str) and name in self.tbs
 
-    @classmethod
-    def load_yaml(cls, file_path: Path) -> "Runbook":
-        """Load and parse a cocotb runbook YAML file, returning a validated Runbook
-        object.
-
-        This function reads a YAML file, validates its schema, verifies all paths, and
-        converts relative paths and environment variables to absolute paths. It then
-        constructs a Runbook object if all validations succeed.
+    @staticmethod
+    def _expand_paths(file_path: Path, rb_dict: dict) -> dict:
+        """Expand and normalize all paths and environment variables in the runbook.
 
         Args:
-            file_path: Path to the runbook YAML file to be loaded.
-
-        Raises:
-            RbFileError: If an error occurs while trying to read the file.
-            RbYAMLError: If the YAML file is invalid or cannot be parsed.
-            RbValidationError: If the file content fails schema or path validation.
+            file_path: Path to the source YAML file.
+            rb_dict: A runbook-like dictionary.
 
         Returns:
-            A fully validated and ready-to-use Runbook object.
+            The provided runbook-like dictionary with the expanded paths.
         """
-        # Load YAML contents
+
+        def _get_abs_path(base: str, path: str) -> Path:
+            """Convert a relative or env-based path to an absolute Path object.
+
+            Args:
+                base: Base path for resolving relative paths.
+                path: Path string to resolve.
+
+            Returns:
+                Absoluted path computed from input.
+            """
+            expanded = Path(expandvars(expanduser(path)))
+            return expanded if expanded.is_absolute() else Path(base) / expanded
+
+        aux_rb = rb_dict.copy()
+
+        aux_rb["include"] = [_get_abs_path(file_path, p) for p in aux_rb["include"]]
+        aux_rb["srcs"] = {
+            k: _get_abs_path(file_path, v) for k, v in aux_rb["srcs"].items()
+        }
+
+        for tb in aux_rb["tbs"].values():
+            tb["path"] = _get_abs_path(file_path, tb["path"])
+            for key in ("build_args", "test_args"):
+                tb[key] = {
+                    k: expandvars(expanduser(v)) if isinstance(v, str) else v
+                    for k, v in tb[key].items()
+                }
+
+        general = aux_rb.get("general", aux_rb)
+        for key in ("build_args", "test_args"):
+            general[key] = {
+                k: expandvars(expanduser(v)) if isinstance(v, str) else v
+                for k, v in general[key].items()
+            }
+
+        return aux_rb
+
+    @staticmethod
+    def _parse_yaml(file_path: Path) -> dict:
+        """Safely parse YAML file and apply default values to critical fields.
+
+        Args:
+            file_path: Path to a YAML file.
+
+        Raises:
+            es:
+            RbFileError: If an error occurs while trying to read the file.
+            RbYAMLError: If the YAML file is invalid or cannot be parsed.
+
+        Returns:
+            A YAML dictionary parsed from the provided file.
+        """
         try:
             with open(file_path, "r", encoding="utf-8") as f_handler:
-                rb_dict = safe_load(f_handler)
-        except OSError as excp:
-            raise RbFileError(excp) from excp
-        except (MarkedYAMLError, YAMLError) as excp:
-            raise RbYAMLError(excp) from excp
+                rb_dict: dict = safe_load(f_handler)
+        except OSError as exc:
+            raise RbFileError(exc) from exc
+        except (MarkedYAMLError, YAMLError) as exc:
+            raise RbYAMLError(exc) from exc
 
-        # Validate YAML schema and paths
-        validate_yaml_schema(rb_dict)
-        validate_paths(rb_dict=rb_dict, yaml_path=str(file_path.parent))
+        rb_dict.setdefault("srcs", {})
+        rb_dict.setdefault("include", [])
 
-        rb_dict: dict
-        general_dict = rb_dict.get("general", rb_dict)
-        validate_stages_args(general_dict.get("test_args", {}), Simulator.test)
-        validate_stages_args(general_dict.get("build_args", {}), Simulator.build)
-        for _, tb_info in rb_dict["tbs"].items():
-            validate_stages_args(tb_info.get("test_args", {}), Simulator.test)
-            validate_stages_args(tb_info.get("build_args", {}), Simulator.build)
+        general_dict: dict = rb_dict.get("general", rb_dict)
+        general_dict.setdefault("build_args", {})
+        general_dict.setdefault("test_args", {})
+        rb_dict.setdefault("tbs", {})
+        for _, tb in rb_dict["tbs"].items():
+            tb: dict
+            tb.setdefault("srcs", [])
+            tb.setdefault("build_args", {})
+            tb.setdefault("test_args", {})
+        return rb_dict
+
+    @classmethod
+    def load_from_yaml(cls, file_path: Path) -> "Runbook":
+        """Load and validate a runbook YAML file into a Runbook instance.
+
+        This method validates the YAML syntax, schema, and paths; normalizes paths; and
+        instantiates a fully populated Runbook object.
+
+        Args:
+            file_path: Path to the YAML file to load.
+
+        Raises:
+            RbFileError: If the file cannot be read.
+            RbYAMLError: If the YAML content is malformed.
+            RbValidationError: If schema or file structure validation fails.
+
+        Returns:
+            Validated and instantiated Runbook object.
+        """
+        rb_dict = cls._parse_yaml(file_path)
+        validate_runbook(rb_dict)
+
+        rb_dict = cls._expand_paths(file_path.parent, rb_dict)
+        validate_paths(rb_dict)
+
+        general_dict: dict = rb_dict.get("general", rb_dict)
+        validate_stages_args(general_dict["build_args"], Simulator.build)
+        validate_stages_args(general_dict["test_args"], Simulator.test)
+
+        for _, tb in rb_dict["tbs"].items():
+            validate_stages_args(tb["build_args"], Simulator.build)
+            validate_stages_args(tb["test_args"], Simulator.test)
 
         return Runbook(
             title=general_dict.get("title", ""),
             sim=general_dict["sim"],
             srcs=rb_dict["srcs"],
-            include=rb_dict.get("include", []),
-            test_args=general_dict.get("test_args", {}),
-            build_args=general_dict.get("build_args", {}),
+            include=rb_dict["include"],
+            build_args=general_dict["build_args"],
+            test_args=general_dict["test_args"],
             tbs={
                 name: Testbench(
-                    build_args=info.get("build_args", {}),
-                    hdl=info["hdl"],
-                    path=info["path"],
-                    rtl_top=info["rtl_top"],
-                    srcs=info["srcs"],
-                    tags=info.get("tags", []),
-                    tb_top=info["tb_top"],
-                    test_args=info.get("test_args", {}),
+                    build_args=tb["build_args"],
+                    hdl=tb["hdl"],
+                    path=tb["path"],
+                    rtl_top=tb["rtl_top"],
+                    srcs=tb["srcs"],
+                    tags=tb.get("tags", []),
+                    tb_top=tb["tb_top"],
+                    test_args=tb["test_args"],
                 )
-                for name, info in rb_dict["tbs"].items()
+                for name, tb in rb_dict["tbs"].items()
             },
         )
