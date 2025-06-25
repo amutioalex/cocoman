@@ -2,46 +2,17 @@
 # pylint: disable=too-many-positional-arguments, too-many-arguments, too-many-statements
 """Commands module for the cocoman command-line interface (CLI)."""
 
-from pathlib import Path
-from re import fullmatch as re_fullmatch
-from typing import Any, Dict, List, Union
-from warnings import filterwarnings
-
-
-# Suppress warning when importing from cocotb.runner
-filterwarnings("ignore")
-
-from cocotb.runner import get_runner
-
-filterwarnings("default")
+from typing import Union
 
 from rich import box
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.table import Table
-from cocoregman.errors import CocomanNameError
-from cocoregman.core.runbook import Runbook
+
 from cocoregman.core.env import get_test_names, load_includes, load_n_import_tb
-
-
-# AUX #
-
-
-def _str_in_regex_list(text: str, regexs: List[str]) -> bool:
-    """Check if a provided string matches fully any of the valid regular expressions of
-    a given list.
-
-    Args:
-        text: The string to check.
-        regexs: The list of valid regular expressions.
-
-    Returns:
-        True if the string matches any of the regex in the list, otherwise False.
-    """
-    return any(re_fullmatch(rgx, text) for rgx in regexs)
-
-
-# COMMANDS #
+from cocoregman.core.orchestrator import Filtering, Orchestrator
+from cocoregman.core.runbook import Runbook
+from cocoregman.errors import CocomanNameError
 
 
 def cmd_list(rbook: Runbook, tb_name: Union[str, None] = None) -> None:
@@ -56,7 +27,7 @@ def cmd_list(rbook: Runbook, tb_name: Union[str, None] = None) -> None:
         TbEnvImportError: If the top testbench module could not be imported.
     """
 
-    def get_docstr(obj: Any) -> str:
+    def get_docstr(obj: object) -> str:
         """Safely return the docstring of an object.
 
         Args:
@@ -176,15 +147,14 @@ def cmd_list(rbook: Runbook, tb_name: Union[str, None] = None) -> None:
 def cmd_run(
     rbook: Runbook,
     dry: bool,
-    tb_names: List[str],
+    tb_names: list[str],
     ntimes: int,
-    include_tests: List[str],
-    exclude_tests: List[str],
-    include_tags: List[str],
-    exclude_tags: List[str],
+    include_tests: list[str],
+    exclude_tests: list[str],
+    include_tags: list[str],
+    exclude_tags: list[str],
 ) -> None:
-    """
-    Execute specified testbenches using the cocotb runner, applying include/exclude
+    """Execute specified testbenches using the cocotb runner, applying include/exclude
     filters.
 
     Args:
@@ -202,65 +172,13 @@ def cmd_run(
         runbook.
         TbEnvImportError: If the testbench module could not be imported properly.
     """
-    load_includes(rbook)
-    sim = get_runner(rbook.sim)
-    console = Console()
-
-    for name in tb_names:
-        if name not in rbook:
-            raise CocomanNameError(
-                f"'{name}' not found\navailable tbs: {', '.join(rbook.tbs.keys())}",
-            )
-        tb_info = rbook.tbs[name]
-        tb_pkg = load_n_import_tb(tb_info)
-
-        # Filter testbench by tags
-        if include_tags and not any(
-            _str_in_regex_list(i, include_tags) for i in tb_info.tags
-        ):
-            continue
-        if exclude_tags and any(
-            _str_in_regex_list(i, include_tags) for i in tb_info.tags
-        ):
-            continue
-
-        # Filter test names
-        tstcases = get_test_names(tb_pkg)
-        if include_tests:
-            tstcases = [i for i in tstcases if _str_in_regex_list(i, include_tests)]
-        if exclude_tests:
-            tstcases = [i for i in tstcases if _str_in_regex_list(i, exclude_tests)]
-        tstcases = [i for i in tstcases for _ in range(ntimes)]
-        if not tstcases:
-            continue
-
-        if dry:
-            console.print(f"[bold]{name}[/bold]")
-            for tst in tstcases:
-                console.print(f" • {tst}")
-            continue
-
-        srcs = [p for i, p in rbook.srcs.items() if i in tb_info.srcs]
-
-        b_args: Dict[str, Any] = rbook.build_args.copy()
-        b_args.update(tb_info.build_args)
-        t_args: Dict[str, Any] = rbook.test_args.copy()
-        t_args.update(tb_info.test_args)
-
-        sim.build(
-            sources=srcs,
-            hdl_toplevel=tb_info.rtl_top,
-            always=True,
-            **b_args,
-        )
-
-        res_xml = t_args.get("results_xml", Path(sim.build_dir, f"{name}_results.xml"))
-
-        sim.test(
-            hdl_toplevel=tb_info.rtl_top,
-            hdl_toplevel_lang=tb_info.hdl,
-            test_module=tb_info.tb_top,
-            testcase=tstcases,
-            results_xml=res_xml,
-            **t_args,
-        )
+    runner = Orchestrator()
+    criteria = Filtering(
+        tb_names, include_tests, exclude_tests, include_tags, exclude_tags
+    )
+    exec_plan = runner.build_plan(rbook, criteria)
+    runner.regression_plan += exec_plan
+    if dry:
+        runner.print_regression(ntimes)
+    else:
+        runner.run_regression(ntimes)
