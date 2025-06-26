@@ -1,10 +1,15 @@
 # pylint: disable=import-error
-"""Utility functions for validating runbooks, filesystem paths, and simulation
-arguments."""
+"""
+Utility functions for validating runbooks, filesystem paths, and simulation
+arguments.
+"""
 
 from inspect import getfullargspec
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Union
+from warnings import warn
+
 from cerberus import Validator
+
 from cocoregman.core.schema import get_runbook_schema
 from cocoregman.errors import RbValidationError
 
@@ -18,6 +23,12 @@ def validate_runbook(rb_dict: dict) -> None:
     Raises:
         RbValidationError: If the structure does not match the expected schema.
     """
+    if "general" not in rb_dict:
+        warn(
+            "[Future Deprecation] Runbook structure without 'general' section.",
+            UserWarning,
+            2,
+        )
     schema = get_runbook_schema(separate_general="general" in rb_dict)
     validator = Validator()
 
@@ -26,7 +37,7 @@ def validate_runbook(rb_dict: dict) -> None:
 
 
 def validate_paths(
-    rb_dict: Dict[str, Union[str, int, List[int], Dict[str, Any]]],
+    rb_dict: dict[str, Union[str, int, list[int], list[str, Any]]],
 ) -> None:
     """Validate all file system paths defined in the runbook.
 
@@ -41,8 +52,8 @@ def validate_paths(
         unregistered sources.
     """
     all_srcs = set(rb_dict["srcs"].keys())
-    missing_paths: List[str] = []
-    unregistered: Dict[str, List[int]] = {}
+    missing_paths: list[str] = []
+    unregistered: dict[str, list[int]] = {}
 
     for src_path in rb_dict["srcs"].values():
         if not src_path.is_file():
@@ -65,7 +76,7 @@ def validate_paths(
         raise RbValidationError(f"Unregistered source indices:\n{unregistered}")
 
 
-def validate_stages_args(args: Dict[str, Any], sim_method: Callable) -> None:
+def validate_stages_args(args: dict[str, Any], sim_method: Callable) -> None:
     """Validate that argument keys are accepted by the given simulation method.
 
     Ignores common internal arguments injected automatically by the cocoregman.
