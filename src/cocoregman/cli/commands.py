@@ -144,28 +144,15 @@ def cmd_list(rbook: Runbook, tb_name: Union[str, None] = None) -> None:
     console.print()
 
 
-def cmd_run(
-    rbook: Runbook,
-    dry: bool,
-    tb_names: list[str],
-    ntimes: int,
-    include_tests: list[str],
-    exclude_tests: list[str],
-    include_tags: list[str],
-    exclude_tags: list[str],
-) -> None:
+def cmd_run(rbook: Runbook, criteria: Filtering, ntimes: int, dry: bool) -> None:
     """Execute specified testbenches using the cocotb runner, applying include/exclude
     filters.
 
     Args:
         rbook: The Runbook containing testbench definitions and configuration.
-        dry: Preview execution plan without simulating.
-        tb_names: List of testbench names to execute.
+        criteria: Filtering rules to select testbenches/tests.
         ntimes: Number of times each test case should be executed.
-        include_tests: Names of test cases to include (if specified).
-        exclude_tests: Names of test cases to exclude (if specified).
-        include_tags: Name of testbench tags to include (if specified).
-        exclude_tags: Name of testbench tags to exclude (if specified).
+        dry: Preview execution plan without simulating.
 
     Raises:
         CocomanNameError: If any of the testbench names is not registered in the
@@ -173,9 +160,6 @@ def cmd_run(
         TbEnvImportError: If the testbench module could not be imported properly.
     """
     runner = Orchestrator()
-    criteria = Filtering(
-        tb_names, include_tests, exclude_tests, include_tags, exclude_tags
-    )
     exec_plan = runner.build_plan(rbook, criteria)
     runner.regression_plan += exec_plan
     if dry:

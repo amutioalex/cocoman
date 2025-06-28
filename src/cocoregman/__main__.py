@@ -9,6 +9,7 @@ from argparse import ArgumentTypeError
 from pathlib import Path
 from cocoregman.cli.argp import CocomanArgParser
 from cocoregman.cli.commands import cmd_list, cmd_run
+from cocoregman.core.orchestrator import Filtering
 from cocoregman.core.runbook import Runbook
 from cocoregman.errors import CocomanError, RbError, TbEnvError
 
@@ -42,16 +43,14 @@ def _exec_thread() -> None:
 
     elif p_args.command == "run":
         tb_names = list(rbook.tbs.keys()) if not p_args.testbench else p_args.testbench
-        cmd_run(
-            rbook=rbook,
-            dry=p_args.dry,
-            tb_names=tb_names,
-            ntimes=p_args.ntimes,
-            include_tests=p_args.include_tests,
-            exclude_tests=p_args.exclude_tests,
-            include_tags=p_args.include_tags,
-            exclude_tags=p_args.exclude_tags,
+        criteria = Filtering(
+            tb_names,
+            p_args.include_tests,
+            p_args.exclude_tests,
+            p_args.include_tags,
+            p_args.exclude_tags,
         )
+        cmd_run(rbook, criteria, p_args.ntimes, p_args.dry)
 
 
 def main() -> None:
