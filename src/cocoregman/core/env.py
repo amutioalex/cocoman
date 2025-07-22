@@ -1,28 +1,23 @@
-"""cocoman testbench environment configuration module.
-
-This module provides functions for managing and importing cocotb testbenches within
-the current Python runtime environment. It ensures that all provided Runbook paths are
-included and that specific testbenches are accessible for analysis, simulation and
-testing.
-"""
+"""Testbench environment setup and dynamic importing for regression runs."""
 
 from importlib.util import find_spec, module_from_spec
 from sys import path as sys_path
 from types import ModuleType
-from typing import List
+
 from cocotb.decorators import test as cctb_test
+
 from cocoregman.core.runbook import Runbook, Testbench
 from cocoregman.errors import TbEnvImportError
 
 
-def get_test_names(tb_pkg: ModuleType) -> List[str]:
-    """Retrieve test names from a testbench module.
+def get_test_names(tb_pkg: ModuleType) -> list[str]:
+    """Return all cocotb test function names from a testbench module.
 
     Args:
-        tb_pkg: The Python module to inspect.
+        tb_pkg: Imported Python module representing the testbench.
 
     Returns:
-        A list of test names identified within the module.
+        A list of function names decorated with @cocotb.test.
     """
     return [
         name for name in dir(tb_pkg) if isinstance(getattr(tb_pkg, name), cctb_test)
@@ -30,51 +25,43 @@ def get_test_names(tb_pkg: ModuleType) -> List[str]:
 
 
 def load_includes(rbook: Runbook) -> None:
-    """Add include directories from a Runbook to the Python module search path.
-
-    This function ensures that all directories specified under the 'include' key of
-    the provided Runbook are added to the system's Python path. This allows Python
-    to locate and import modules defined within those directories during simulation.
+    """Append include paths from a runbook to the Python import path.
 
     Args:
-        rbook: Runbook object containing the 'include' paths to be loaded.
+        rbook: A Runbook object with include directories to add to sys.path.
     """
     for path in rbook.include:
-        if str(path) not in sys_path:
-            sys_path.append(str(path))
+        path_str = str(path)
+        if path_str not in sys_path:
+            sys_path.append(path_str)
 
 
 def load_n_import_tb(tb_info: Testbench) -> ModuleType:
-    """Dynamically import the top-level module of a specified Testbench.
-
-    Given a Testbench object, this function temporarily adds the testbench's path
-    to the Python module search path and imports the module specified by 'tb_top'.
-    This allows the cocoman framework to access and interact with the desired
-    testbench components.
+    """Dynamically import a testbench module from its directory.
 
     Args:
-        tb_info: Testbench object containing metadata about the testbench to import.
+        tb_info: Testbench object.
 
     Raises:
-        TbEnvImportError: If a testbench top module cannot be imported correctly, or if
-            the module could not be found.
+        TbEnvImportError: If the testbench module cannot be found or loaded.
 
     Returns:
-        The imported Python module representing the testbench.
+        The imported module object representing the testbench.
     """
     for path in [tb_info.path, tb_info.path.parent]:
-        if path not in sys_path:
-            sys_path.insert(0, str(path))
+        path_str = str(path)
+        if path_str not in sys_path:
+            sys_path.insert(0, path_str)
 
     try:
-        spec = find_spec(f"{tb_info.path.name}.{tb_info.tb_top}")
-    except ValueError as excp:
-        raise TbEnvImportError(excp) from excp
+        mod_path = f"{tb_info.path.name}.{tb_info.tb_top}"
+        spec = find_spec(mod_path)
+    except ValueError as exc:
+        raise TbEnvImportError(exc) from exc
+
     if spec is None:
-        raise TbEnvImportError(
-            f"could not correctly import {tb_info.path.name}.{tb_info.tb_top}",
-        )
+        raise TbEnvImportError(f"Could not import testbench module '{mod_path}'")
+
     module = module_from_spec(spec)
     spec.loader.exec_module(module)
-
     return module

@@ -1,16 +1,16 @@
-"""Schema definitions for validating a runbook dictionary."""
+"""Schema definitions for validating a runbook YAML configuration."""
 
-from typing import Any, Dict
+from typing import Any
 
 
-def _get_tb_entry_schema() -> Dict[str, Any]:
-    """Return schema for a single testbench entry."""
+def _get_tb_entry_schema() -> dict[str, Any]:
+    """Return schema for a single testbench description entry."""
     return {
         "srcs": {
             "type": "list",
             "required": False,
-            "schema": {"type": "integer"},
             "empty": False,
+            "schema": {"type": "integer"},
         },
         "path": {"type": "string", "required": True, "empty": False},
         "rtl_top": {"type": "string", "required": False, "empty": False},
@@ -23,8 +23,8 @@ def _get_tb_entry_schema() -> Dict[str, Any]:
         "tags": {
             "type": "list",
             "required": False,
-            "schema": {"type": "string"},
             "empty": False,
+            "schema": {"type": "string"},
         },
         "build_args": {
             "type": "dict",
@@ -39,15 +39,15 @@ def _get_tb_entry_schema() -> Dict[str, Any]:
     }
 
 
-def _get_runbook_base_sch() -> Dict[str, Any]:
-    """Return base schema for the runbook, excluding the general section."""
+def _get_runbook_base_schema() -> dict[str, Any]:
+    """Return base schema for the runbook (excluding general configuration)."""
     return {
         "srcs": {
             "type": "dict",
             "keysrules": {"type": "integer", "coerce": int},
             "valuesrules": {"type": "string", "empty": False},
-            "empty": False,
             "required": False,
+            "empty": False,
         },
         "tbs": {
             "type": "dict",
@@ -66,8 +66,8 @@ def _get_runbook_base_sch() -> Dict[str, Any]:
     }
 
 
-def _get_general_section_sch() -> Dict[str, Any]:
-    """Return schema for the general section of the runbook."""
+def _get_general_section_schema() -> dict[str, Any]:
+    """Return schema for the general configuration section of the runbook."""
     return {
         "sim": {
             "type": "string",
@@ -101,22 +101,22 @@ def _get_general_section_sch() -> Dict[str, Any]:
     }
 
 
-def get_runbook_schema(separate_general: bool = False) -> Dict[str, Any]:
-    """Return the runbook schema.
+def get_runbook_schema(separate_general: bool = False) -> dict[str, Any]:
+    """Return the full runbook schema for validation.
 
     Args:
-        separate_general: If True, the general section will be nested under a
-            top-level general dictionary key. If False, its keys will be merged at
-            the top level of the schema.
+        separate_general: If True, the general config section will be nested under the
+            `general` key. If False, general keys will be merged at the top level.
 
     Returns:
-        A dictionary representing the runbook schema.
+        A cerberus-compatible dictionary schema.
     """
-    rb_sch = {**_get_runbook_base_sch()}
-    gen_sect_sch = _get_general_section_sch()
+    schema = _get_runbook_base_schema()
+    general_schema = _get_general_section_schema()
 
     if separate_general:
-        rb_sch["general"] = {"type": "dict", "schema": gen_sect_sch, "required": True}
+        schema["general"] = {"type": "dict", "required": True, "schema": general_schema}
     else:
-        rb_sch.update(gen_sect_sch)
-    return rb_sch
+        schema.update(general_schema)
+
+    return schema

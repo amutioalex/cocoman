@@ -1,66 +1,63 @@
-"""cocoman command-line interface (CLI) entry point.
-
-This module serves as the execution entry point for cocoman, a regression runner for
-cocotb-based verification workflows. It handles command-line argument parsing, loads
-the runbook, and dispatches execution to the appropriate commands.
-"""
+"""Command-line interface (CLI) entry point."""
 
 from argparse import ArgumentTypeError
-from pathlib import Path
-from cocoregman.cli.argp import CocomanArgParser
-from cocoregman.cli.commands import cmd_list, cmd_run
-from cocoregman.core.orchestrator import Filtering
-from cocoregman.core.runbook import Runbook
+from typing import TYPE_CHECKING
+
+from cocoregman.cli import CocomanArgParser, cmd_list, cmd_run
+from cocoregman.core import Filtering, Runbook
 from cocoregman.errors import CocomanError, RbError, TbEnvError
+
+if TYPE_CHECKING:
+    from argparse import Namespace
+    from pathlib import Path
 
 
 def _exec_thread() -> None:
-    """Execute the main cocoman processing flow. Parses arguments, loads the runbook,
-    and executes the requested command.
+    """Execute the main CLI processing flow.
+
+    Parse arguments, validate the runbook path, load the runbook, and dispatch execution
+    to the appropriate command.
 
     Raises:
-        ArgumentTypeError: If the path to the runbook does not point to an existent file.
-        RbError: If an error is found while loading the runbook.
-        CocomanError: If an error is found while running a command.
-        TbEnvError: If an error is found while running a command.
+        ArgumentTypeError: If the runbook path is invalid or does not exist.
+        RbError: If an error occurs during runbook loading.
+        CocomanError: If a CLI or testbench-related error occurs.
+        TbEnvError: If an error occurs while importing a testbench module.
     """
     cmn_p = CocomanArgParser()
-    p_args = cmn_p.parse_args()
+    args: Namespace = cmn_p.parse_args()
 
     # Obtain runbook
-    rb_path: Path = p_args.runbook.resolve()
-    rb_path = rb_path if rb_path.is_file() else rb_path / ".cocoman"
-    if not rb_path.exists():
-        raise ArgumentTypeError(
-            f"provided runbook path is not an existing file '{str(rb_path)}'"
-        )
-    rbook = Runbook.load_from_yaml(rb_path)
+    rb_path: Path = args.runbook.resolve()
+    rb_file = rb_path if rb_path.is_file() else rb_path / ".cocoman"
+    if not rb_file.exists():
+        raise ArgumentTypeError(f"Runbook file not found: '{rb_file}'")
+
+    rbook = Runbook.load_from_yaml(rb_file)
 
     # Commands
-    if p_args.command == "list":
-        tb = None if not p_args.testbench else p_args.testbench[0]
+    if args.command == "list":
+        tb = args.testbench[0] if args.testbench else None
         cmd_list(rbook, tb)
 
-    elif p_args.command == "run":
-        tb_names = list(rbook.tbs.keys()) if not p_args.testbench else p_args.testbench
+    elif args.command == "run":
+        selected = args.testbench or list(rbook.tbs)
         criteria = Filtering(
-            tb_names,
-            p_args.include_tests,
-            p_args.exclude_tests,
-            p_args.include_tags,
-            p_args.exclude_tags,
+            tb_names=selected,
+            include_tests=args.include_tests,
+            exclude_tests=args.exclude_tests,
+            include_tags=args.include_tags,
+            exclude_tags=args.exclude_tags,
         )
-        cmd_run(rbook, criteria, p_args.ntimes, p_args.dry)
+        cmd_run(rbook, criteria, ntimes=args.ntimes, dry=args.dry)
 
 
 def main() -> None:
-    """Main entry point for cocoman execution. Call '_exec_thread' to process commands
-    and handle top-level exceptions.
-    """
+    """Entry point for the CLI tool."""
     try:
         _exec_thread()
-    except (RbError, CocomanError, TbEnvError) as excp:
-        print(excp)
+    except (RbError, CocomanError, TbEnvError) as exc:
+        print(f"[cocoman error] {exc}")
 
 
 if __name__ == "__main__":

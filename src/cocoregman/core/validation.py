@@ -1,11 +1,9 @@
-# pylint: disable=import-error
-"""
-Utility functions for validating runbooks, filesystem paths, and simulation
-arguments.
-"""
+"""Utility functions for validating runbook input structures and file paths."""
+
+from __future__ import annotations
 
 from inspect import getfullargspec
-from typing import Any, Callable, Union
+from typing import TYPE_CHECKING, Any, Callable
 from warnings import warn
 
 from cerberus import Validator
@@ -13,22 +11,26 @@ from cerberus import Validator
 from cocoregman.core.schema import get_runbook_schema
 from cocoregman.errors import RbValidationError
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 def validate_runbook(rb_dict: dict) -> None:
-    """Validate a runbook dictionary against the runbook schema.
+    """Validate the structure of a runbook dictionary.
 
     Args:
-        rb_dict: Dictionary to validate.
+        rb_dict: Dictionary parsed from a runbook YAML file.
 
     Raises:
-        RbValidationError: If the structure does not match the expected schema.
+        RbValidationError: If the dictionary doesn't conform to the expected schema.
     """
     if "general" not in rb_dict:
         warn(
             "[Future Deprecation] Runbook structure without 'general' section.",
             UserWarning,
-            2,
+            stacklevel=2,
         )
+
     schema = get_runbook_schema(separate_general="general" in rb_dict)
     validator = Validator()
 
@@ -36,39 +38,34 @@ def validate_runbook(rb_dict: dict) -> None:
         raise RbValidationError(f"YAML schema validation failed:\n{validator.errors}")
 
 
-def validate_paths(
-    rb_dict: dict[str, Union[str, int, list[int], list[str, Any]]],
-) -> None:
-    """Validate all file system paths defined in the runbook.
+def validate_paths(rb_dict: dict[str, str | int | list[int] | list[str | Any]]) -> None:
+    """Validate all paths and source references in a runbook dictionary.
 
     This function assumes that the provided runbook dictionary contains all
     sections/keys listed in the schema, even if void.
 
     Args:
-        rb_dict: Validated and complete dictionary.
+        rb_dict: A validated runbook dictionary.
 
     Raises:
-        RbValidationError: If any path does not exist, or testbenches reference
-        unregistered sources.
+        RbValidationError: If any path is missing or source index is unregistered
     """
-    all_srcs = set(rb_dict["srcs"].keys())
-    missing_paths: list[str] = []
+    all_srcs = set(rb_dict.get("srcs", {}).keys())
     unregistered: dict[str, list[int]] = {}
+    missing_paths: list[Path]
 
-    for src_path in rb_dict["srcs"].values():
-        if not src_path.is_file():
-            missing_paths.append(str(src_path))
+    missing_paths = [p for p in rb_dict.get("srcs", {}).values() if not p.is_file()]
 
-    for name, tb in rb_dict["tbs"].items():
-        if not tb["path"].is_dir():
-            missing_paths.append(str(tb["path"]))
+    for name, tb in rb_dict.get("tbs", {}).items():
+        tb_path: Path = tb["path"]
+        if not tb_path.is_dir():
+            missing_paths.append(tb["path"])
+
         missing_indices = [i for i in tb.get("srcs", []) if i not in all_srcs]
         if missing_indices:
             unregistered[name] = missing_indices
 
-    for inc_path in rb_dict["include"]:
-        if not inc_path.exists():
-            missing_paths.append(str(inc_path))
+    missing_paths.extend([p for p in rb_dict.get("include", []) if not p.exists()])
 
     if missing_paths:
         raise RbValidationError(f"Non-existent paths\n{missing_paths}")
@@ -77,35 +74,35 @@ def validate_paths(
 
 
 def validate_stages_args(args: dict[str, Any], sim_method: Callable) -> None:
-    """Validate that argument keys are accepted by the given simulation method.
+    """Validate user-provided simulation stage arguments.
 
-    Ignores common internal arguments injected automatically by the cocoregman.
+    Ignores common internal arguments injected automatically by the orchestrator.
 
     Args:
-        args: Dictionary of user-provided arguments.
-        sim_method: Simulation method to validate arguments against.
+        args: Argument dictionary for a simulation stage (build/test).
+        sim_method: Method/function of the simulation stage.
 
     Raises:
-        RbValidationError: If an unrecognized argument is provided.
+        RbValidationError: If any user argument is not accepted by the method.
     """
     ignored = {
+        "always",
+        "hdl_toplevel",
+        "hdl_toplevel_lang",
         "self",
+        "sources",
+        "testcase",
+        "test_module",
+        "timescale",
         "verilog_sources",
         "vhdl_sources",
-        "sources",
-        "hdl_toplevel",
-        "test_module",
-        "hdl_toplevel_lang",
-        "testcase",
-        "always",
-        "timescale",
     }
 
     valid_args = [arg for arg in getfullargspec(sim_method).args if arg not in ignored]
 
-    for key in args:
-        if key not in valid_args:
-            raise RbValidationError(
-                f"Invalid key '{key}' in '{sim_method.__name__}' arguments. "
-                f"Allowed: {valid_args}",
-            )
+    invalid_keys = [key for key in args if key not in valid_args]
+    if invalid_keys:
+        raise RbValidationError(
+            f"Invalid argument(s) for '{sim_method.__name__}': {invalid_keys}. "
+            f"Allowed: {valid_args}"
+        )

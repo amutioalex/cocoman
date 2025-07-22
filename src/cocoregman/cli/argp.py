@@ -1,46 +1,46 @@
-# pylint: disable=import-error
-"""Custom argument parser for the cocoman command-line interface (CLI)."""
+"""Custom argument parser for the command-line interface."""
 
-from argparse import _SubParsersAction, ArgumentParser, ArgumentTypeError
+from argparse import ArgumentParser, ArgumentTypeError, _SubParsersAction
 from importlib.metadata import version
 from pathlib import Path
-from re import compile as re_compile, error as ReError
+from re import compile as re_compile
+from re import error as re_error
 
 
 class CocomanArgParser(ArgumentParser):
-    """Custom argument parser for the Cocoman CLI."""
+    """Argument parser for the `cmn` CLI entrypoint."""
 
     def __init__(self) -> None:
-        """Initialize the custom argument parser and set up the CLI interface."""
+        """Initialize the CLI parser with metadata and subcommands."""
         super().__init__()
 
         self._init_metadata()
         self._init_parser()
 
-    # INITIALIZATION
-
     def _init_metadata(self) -> None:
-        """Initialize parser metadata fields."""
+        """Set up program metadata."""
         self.prog = "cmn"
         self.description = "Regression runner for cocotb-based verification workflows."
-        self.epilog = "Support available on the GitHub repository."
 
     def _init_parser(self) -> None:
-        """Initialize the argument parser with core arguments and subcommands."""
+        """Initialize CLI arguments and subparsers."""
         self.allow_abbrev = False
+
         self.add_argument(
             "-V",
             "--version",
             action="version",
             version=version("cocoregman"),
-            help="print the cocoman version number and exit",
+            help="print the version number and exit",
         )
+
         sub_p = self.add_subparsers(
             dest="command",
             metavar="<command>",
             parser_class=ArgumentParser,
             required=True,
         )
+
         self._config_list_subparser(sub_p)
         self._config_run_subparser(sub_p)
 
@@ -49,13 +49,14 @@ class CocomanArgParser(ArgumentParser):
     def _config_list_subparser(self, parser: _SubParsersAction) -> None:
         """Configure the 'list' subcommand for inspecting runbook contents."""
         list_p = parser.add_parser("list", help="display runbook information")
+
         list_p.add_argument(
             "runbook",
             default=Path("./"),
             nargs="?",
             metavar="<path>",
             type=Path,
-            help="path to runbook or directory containing a '.cocoman' file",
+            help="path to a runbook or directory containing a '.cocoman' file",
         )
         list_p.add_argument(
             "-t",
@@ -65,12 +66,13 @@ class CocomanArgParser(ArgumentParser):
             nargs=1,
             metavar="<name>",
             type=str,
-            help="testbench to inspect",
+            help="optional testbench name to inspect",
         )
 
     def _config_run_subparser(self, parser: _SubParsersAction) -> None:
         """Configure the 'run' subcommand for executing regressions."""
-        run_p = parser.add_parser("run", help="run a cocoman regression")
+        run_p = parser.add_parser("run", help="run a regression")
+
         run_p.add_argument(
             "runbook",
             default=Path("./"),
@@ -93,7 +95,7 @@ class CocomanArgParser(ArgumentParser):
             dest="testbench",
             nargs="+",
             metavar="<name>",
-            help="testbench(es) to run",
+            help="testbench(es) to include",
         )
         run_p.add_argument(
             "-n",
@@ -112,7 +114,7 @@ class CocomanArgParser(ArgumentParser):
             metavar="<regex>",
             nargs="+",
             type=self._check_regex,
-            help="select specific tests to include in the run",
+            help="regex pattern(s) to include specific test names",
         )
         run_p.add_argument(
             "-e",
@@ -122,7 +124,7 @@ class CocomanArgParser(ArgumentParser):
             metavar="<regex>",
             nargs="+",
             type=self._check_regex,
-            help="select specific tests to exclude from the run",
+            help="regex pattern(s) to exclude specific test names",
         )
         run_p.add_argument(
             "-I",
@@ -132,7 +134,7 @@ class CocomanArgParser(ArgumentParser):
             metavar="<regex>",
             nargs="+",
             type=self._check_regex,
-            help="select specific testbench tags to include in the run",
+            help="regex pattern(s) to include specific testbench tags",
         )
         run_p.add_argument(
             "-E",
@@ -142,30 +144,28 @@ class CocomanArgParser(ArgumentParser):
             metavar="<regex>",
             nargs="+",
             type=self._check_regex,
-            help="select specific testbench tags to exclude from the run",
+            help="regex pattern(s) to exclude specific testbench tags",
         )
-
-    # AUX
 
     @staticmethod
     def _check_regex(regex: str) -> str:
-        """Validate a provided string as a compatible regular expression.
+        """Validate a regular expression string.
 
         Args:
-            regex: Regular expression string.
+            regex: A string representing the regex pattern.
 
         Returns:
-            The validated regex string.
+            The original string if it is a valid regex.
 
         Raises:
             ArgumentTypeError: If the regex is invalid or empty.
         """
         if not regex.strip():
             raise ArgumentTypeError("provided regular expression cannot be empty")
+
         try:
             re_compile(regex)
-        except ReError as excp:
-            raise ArgumentTypeError(
-                f"'{regex}' is not a valid regular expression: {excp}"
-            ) from excp
+        except re_error as exc:
+            raise ArgumentTypeError(f"Invalid regex '{regex}': {exc}") from exc
+
         return regex

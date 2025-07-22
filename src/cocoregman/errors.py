@@ -1,11 +1,11 @@
 """Custom exception classes definitions."""
 
-
 # COMMAND LINE #
 
 
 class CocomanError(Exception):
     """Base exception class for errors encountered during command-line processing."""
+
 
 class CocomanNameError(CocomanError):
     """Raised when an unrecognized testbench or test name is found."""
@@ -34,10 +34,8 @@ class RbYAMLError(RbError):
 
 
 class TbEnvError(Exception):
-    """Base exception class for errors encountered during testbench environment
-    configuration."""
+    """Base exception class for errors encountered during environemnt configuration."""
 
 
 class TbEnvImportError(TbEnvError):
-    """Raised when a import-related error occurs during testbench environment
-    configuration."""
+    """Raised when a import-related error occurs during environment configuration."""
