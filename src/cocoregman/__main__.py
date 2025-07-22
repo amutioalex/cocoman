@@ -3,9 +3,9 @@
 from argparse import ArgumentTypeError
 from typing import TYPE_CHECKING
 
-from cocoregman.cli import CocomanArgParser, cmd_list, cmd_run
+from cocoregman.cli import CocoregmanArgParser, cmd_list, cmd_run
 from cocoregman.core import Filtering, Runbook
-from cocoregman.errors import CocomanError, RbError, TbEnvError
+from cocoregman.errors import CocoregmanError, RbError, TbEnvError
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -21,10 +21,10 @@ def _exec_thread() -> None:
     Raises:
         ArgumentTypeError: If the runbook path is invalid or does not exist.
         RbError: If an error occurs during runbook loading.
-        CocomanError: If a CLI or testbench-related error occurs.
+        CocoregmanError: If a CLI or testbench-related error occurs.
         TbEnvError: If an error occurs while importing a testbench module.
     """
-    cmn_p = CocomanArgParser()
+    cmn_p = CocoregmanArgParser()
     args: Namespace = cmn_p.parse_args()
 
     # Obtain runbook
@@ -56,8 +56,8 @@ def main() -> None:
     """Entry point for the CLI tool."""
     try:
         _exec_thread()
-    except (RbError, CocomanError, TbEnvError) as exc:
-        print(f"[cocoman error] {exc}")
+    except (RbError, CocoregmanError, TbEnvError) as exc:
+        print(f"[cocoregman error] {exc}")
 
 
 if __name__ == "__main__":

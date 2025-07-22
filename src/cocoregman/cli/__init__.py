@@ -8,16 +8,16 @@ Modules:
     commands: CLI command implementations.
 
 Exports:
-    CocomanArgParser: Custom argument parser for the CLI.
+    CocoregmanArgParser: Custom argument parser for the CLI.
     cmd_list: Command for displaying runbook/testbench information.
     cmd_run: Command for executing regressions with filtering options.
 """
 
-from cocoregman.cli.argp import CocomanArgParser
+from cocoregman.cli.argp import CocoregmanArgParser
 from cocoregman.cli.commands import cmd_list, cmd_run
 
 __all__ = [
-    "CocomanArgParser",
+    "CocoregmanArgParser",
     "cmd_list",
     "cmd_run",
 ]

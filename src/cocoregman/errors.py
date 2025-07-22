@@ -3,11 +3,11 @@
 # COMMAND LINE #
 
 
-class CocomanError(Exception):
+class CocoregmanError(Exception):
     """Base exception class for errors encountered during command-line processing."""
 
 
-class CocomanNameError(CocomanError):
+class CocoregmanNameError(CocoregmanError):
     """Raised when an unrecognized testbench or test name is found."""
 
 

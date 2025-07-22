@@ -7,7 +7,7 @@ from re import compile as re_compile
 from re import error as re_error
 
 
-class CocomanArgParser(ArgumentParser):
+class CocoregmanArgParser(ArgumentParser):
     """Argument parser for the `cmn` CLI entrypoint."""
 
     def __init__(self) -> None:

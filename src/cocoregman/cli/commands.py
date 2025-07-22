@@ -16,7 +16,7 @@ from cocoregman.core import (
     load_includes,
     load_n_import_tb,
 )
-from cocoregman.errors import CocomanNameError
+from cocoregman.errors import CocoregmanNameError
 
 if TYPE_CHECKING:
     from cocoregman.core import Runbook
@@ -30,7 +30,7 @@ def cmd_list(rbook: Runbook, tb_name: str | None = None) -> None:
         tb_name: Optional name of a specific testbench to inspect.
 
     Raises:
-        CocomanNameError: If the provided testbench name is not in the runbook.
+        CocoregmanNameError: If the provided testbench name is not in the runbook.
         TbEnvImportError: If the testbench module cannot be imported.
     """
 
@@ -52,7 +52,7 @@ def cmd_list(rbook: Runbook, tb_name: str | None = None) -> None:
     if tb_name:
         if tb_name not in rbook:
             available = ", ".join(rbook.tbs)
-            raise CocomanNameError(f"'{tb_name}' not found.\nAvailable: {available}")
+            raise CocoregmanNameError(f"'{tb_name}' not found.\nAvailable: {available}")
 
         load_includes(rbook)
         tb_info = rbook.tbs[tb_name]
@@ -170,7 +170,6 @@ def cmd_run(rbook: Runbook, criteria: Filtering, ntimes: int, dry: bool) -> None
         dry: If True, only display the regression plan without executing.
 
     Raises:
-        CocomanNameError: If a referenced testbench is missing in the runbook.
         TbEnvImportError: If testbench environment import fails.
     """
     runner = Orchestrator()
