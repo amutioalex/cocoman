@@ -2,9 +2,9 @@
 """Custom argument parser for the cocoman command-line interface (CLI)."""
 
 from argparse import _SubParsersAction, ArgumentParser, ArgumentTypeError
+from importlib.metadata import version
 from pathlib import Path
 from re import compile as re_compile, error as ReError
-from cocoregman import __version__
 
 
 class CocomanArgParser(ArgumentParser):
@@ -32,7 +32,7 @@ class CocomanArgParser(ArgumentParser):
             "-V",
             "--version",
             action="version",
-            version=__version__,
+            version=version("cocoregman"),
             help="print the cocoman version number and exit",
         )
         sub_p = self.add_subparsers(
