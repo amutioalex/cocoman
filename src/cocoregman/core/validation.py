@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from fnmatch import fnmatch
 from inspect import getfullargspec
+from re import compile as re_compile
+from re import error as re_error
+from re import fullmatch as re_fullmatch
 from typing import TYPE_CHECKING, Any, Callable
 from warnings import warn
 
@@ -13,6 +17,50 @@ from cocoregman.errors import RbValidationError
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def match_globs(text: str, globs: list[str]) -> bool:
+    """Check if a string fully matches any of the provided glob patterns.
+
+    Args:
+        text: The string to evaluate.
+        globs: A list of glob patterns.
+
+    Returns:
+        True if the string fully matches any of the glob patterns.
+    """
+    return any(fnmatch(text, pattern) for pattern in globs)
+
+
+def match_regexs(text: str, regexs: list[str]) -> bool:
+    """Check if a string fully matches any of the provided regex patterns.
+
+    Args:
+        text: The string to evaluate.
+        regexs: A list of regex patterns.
+
+    Returns:
+        True if the string fully matches any of the regex patterns.
+    """
+    return any(re_fullmatch(pattern, text) for pattern in regexs)
+
+
+def validate_regexs(*patterns: list[str] | None) -> tuple[str, str] | None:
+    """Validate all strings contained in a list as valid regex patterns.
+
+    Args:
+        patterns: A list containing regex patterns
+
+    Raises:
+        ValueError: If one of the string is not valid.
+    """
+    try:
+        for collection in patterns:
+            for p in collection:
+                re_compile(p)
+    except re_error as exc:
+        return (p, exc.msg)
+    return None
 
 
 def validate_runbook(rb_dict: dict) -> None:

@@ -1,10 +1,12 @@
 """Command-line interface (CLI) entry point."""
 
+from __future__ import annotations
+
 from argparse import ArgumentTypeError
 from typing import TYPE_CHECKING
 
 from cocoregman.cli import CocoregmanArgParser, cmd_list, cmd_run
-from cocoregman.core import Filtering, Runbook
+from cocoregman.core import Filtering, Runbook, validate_regexs
 from cocoregman.errors import CocoregmanError, RbError, TbEnvError
 
 if TYPE_CHECKING:
@@ -19,7 +21,8 @@ def _exec_thread() -> None:
     to the appropriate command.
 
     Raises:
-        ArgumentTypeError: If the runbook path is invalid or does not exist.
+        ArgumentTypeError: If the runbook path is invalid or does not exist, or if any
+            of the given regex patterns are not valid.
         RbError: If an error occurs during runbook loading.
         CocoregmanError: If a CLI or testbench-related error occurs.
         TbEnvError: If an error occurs while importing a testbench module.
@@ -42,8 +45,20 @@ def _exec_thread() -> None:
 
     elif args.command == "run":
         selected = args.testbench or list(rbook.tbs)
+
+        if args.glob is False:
+            valid = validate_regexs(
+                args.include_tests,
+                args.exclude_tests,
+                args.include_tags,
+                args.exclude_tags,
+            )
+            if valid:
+                raise ArgumentTypeError(f"Invalid regex '{valid[0]}': {valid[1]}")
+
         criteria = Filtering(
             tb_names=selected,
+            pattern_style="glob" if args.glob else "regex",
             include_tests=args.include_tests,
             exclude_tests=args.exclude_tests,
             include_tags=args.include_tags,
@@ -56,7 +71,7 @@ def main() -> None:
     """Entry point for the CLI tool."""
     try:
         _exec_thread()
-    except (RbError, CocoregmanError, TbEnvError) as exc:
+    except (ArgumentTypeError, CocoregmanError, RbError, TbEnvError) as exc:
         print(f"[cocoregman error] {exc}")
 
 

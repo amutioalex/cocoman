@@ -4,29 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from re import fullmatch as re_fullmatch
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Literal
 
 from cocotb.runner import get_runner
 from rich.console import Console
 
 from cocoregman.core.env import get_test_names, load_includes, load_n_import_tb
+from cocoregman.core.validation import match_globs, match_regexs
 
 if TYPE_CHECKING:
     from cocoregman.core.runbook import Runbook
-
-
-def _match_regexs(text: str, regexs: list[str]) -> bool:
-    """Check if a string fully matches any of the provided regex patterns.
-
-    Args:
-        text: The string to evaluate.
-        regexs: A list of regex patterns.
-
-    Returns:
-        True if the string fully matches any of the regex patterns.
-    """
-    return any(re_fullmatch(pattern, text) for pattern in regexs)
 
 
 @dataclass
@@ -50,6 +37,7 @@ class Filtering:
 
     Attributes:
         tb_names: Testbench names to explicitly include.
+        pattern_style: Pattern matching style (e.g. regex, glob)
         include_tests: Regexes to match which tests to include.
         exclude_tests: Regexes to match which tests to exclude.
         include_tags: Regexes to match which testbench tags to include.
@@ -57,6 +45,7 @@ class Filtering:
     """
 
     tb_names: list[str] = field(default_factory=list)
+    pattern_style: Literal["regex", "glob"] = "regex"
     include_tests: list[str] = field(default_factory=list)
     exclude_tests: list[str] = field(default_factory=list)
     include_tags: list[str] = field(default_factory=list)
@@ -83,10 +72,12 @@ class Filtering:
         exclude = self.exclude_tags if attr == "tags" else self.exclude_tests
 
         results = dataset
+        validator: Callable
+        validator = match_regexs if self.pattern_style == "regex" else match_globs
         if include:
-            results = [i for i in results if _match_regexs(i, include)]
+            results = [i for i in results if validator(i, include)]
         if exclude:
-            results = [i for i in results if not _match_regexs(i, exclude)]
+            results = [i for i in results if not validator(i, exclude)]
 
         return results
 

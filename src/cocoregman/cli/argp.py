@@ -1,10 +1,8 @@
 """Custom argument parser for the command-line interface."""
 
-from argparse import ArgumentParser, ArgumentTypeError, _SubParsersAction
+from argparse import ArgumentParser, _SubParsersAction
 from importlib.metadata import version
 from pathlib import Path
-from re import compile as re_compile
-from re import error as re_error
 
 
 class CocoregmanArgParser(ArgumentParser):
@@ -48,7 +46,9 @@ class CocoregmanArgParser(ArgumentParser):
 
     def _config_list_subparser(self, parser: _SubParsersAction) -> None:
         """Configure the 'list' subcommand for inspecting runbook contents."""
-        list_p = parser.add_parser("list", help="display runbook information")
+        list_p: ArgumentParser = parser.add_parser(
+            "list", help="display runbook information"
+        )
 
         list_p.add_argument(
             "runbook",
@@ -71,7 +71,7 @@ class CocoregmanArgParser(ArgumentParser):
 
     def _config_run_subparser(self, parser: _SubParsersAction) -> None:
         """Configure the 'run' subcommand for executing regressions."""
-        run_p = parser.add_parser("run", help="run a regression")
+        run_p: ArgumentParser = parser.add_parser("run", help="run a regression")
 
         run_p.add_argument(
             "runbook",
@@ -111,61 +111,45 @@ class CocoregmanArgParser(ArgumentParser):
             "--include-tests",
             default=[],
             dest="include_tests",
-            metavar="<regex>",
+            metavar="<pattern>",
             nargs="+",
-            type=self._check_regex,
-            help="regex pattern(s) to include specific test names",
+            type=str,
+            help="pattern(s) to include specific test names",
         )
         run_p.add_argument(
             "-e",
             "--exclude-tests",
             default=[],
             dest="exclude_tests",
-            metavar="<regex>",
+            metavar="<pattern>",
             nargs="+",
-            type=self._check_regex,
-            help="regex pattern(s) to exclude specific test names",
+            type=str,
+            help="pattern(s) to exclude specific test names",
         )
         run_p.add_argument(
             "-I",
             "--include-tags",
             default=[],
             dest="include_tags",
-            metavar="<regex>",
+            metavar="<pattern>",
             nargs="+",
-            type=self._check_regex,
-            help="regex pattern(s) to include specific testbench tags",
+            type=str,
+            help="pattern(s) to include specific testbench tags",
         )
         run_p.add_argument(
             "-E",
             "--exclude-tags",
             default=[],
             dest="exclude_tags",
-            metavar="<regex>",
+            metavar="<pattern>",
             nargs="+",
-            type=self._check_regex,
-            help="regex pattern(s) to exclude specific testbench tags",
+            type=str,
+            help="pattern(s) to exclude specific testbench tags",
         )
-
-    @staticmethod
-    def _check_regex(regex: str) -> str:
-        """Validate a regular expression string.
-
-        Args:
-            regex: A string representing the regex pattern.
-
-        Returns:
-            The original string if it is a valid regex.
-
-        Raises:
-            ArgumentTypeError: If the regex is invalid or empty.
-        """
-        if not regex.strip():
-            raise ArgumentTypeError("provided regular expression cannot be empty")
-
-        try:
-            re_compile(regex)
-        except re_error as exc:
-            raise ArgumentTypeError(f"Invalid regex '{regex}': {exc}") from exc
-
-        return regex
+        run_p.add_argument(
+            "-g",
+            "--glob",
+            action="store_true",
+            dest="glob",
+            help="parse patterns as glob instead of regex",
+        )
