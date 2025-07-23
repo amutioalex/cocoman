@@ -35,14 +35,14 @@ def calculate_version(scm_version: ScmVersion) -> str:
     branch_cmmts = list(repo.iter_commits())
     ind_tag_cmmt = branch_cmmts.index(latest_tag.commit)
     ind_latest_cmmt = branch_cmmts.index(latest_cmmt)
-    newest_cmmts = branch_cmmts[ind_latest_cmmt:ind_tag_cmmt]
-    not_only_fix = any(not c.message.startswith("Fix") for c in newest_cmmts)
+    new_cmmts = branch_cmmts[ind_latest_cmmt:ind_tag_cmmt]
+    not_only_fix = any(not c.message.casefold().startswith("fix:") for c in new_cmmts)
 
     version = latest_tag.name.split(".")
     bump_index = 1 if not_only_fix else 2
     version[bump_index] = str(int(version[bump_index]) + 1)
     version = ".".join(version)
-    return f"{version}.dev{len(newest_cmmts)}"
+    return f"{version}.dev{len(new_cmmts)}"
 
 
 setup(use_scm_version={"version_scheme": calculate_version})
