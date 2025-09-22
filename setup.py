@@ -28,6 +28,9 @@ def calculate_version(scm_version: ScmVersion) -> str:
         return "0.0.0.dev0"
 
     latest_tag: Tag = repo.tags[-1]
+    if latest_tag.is_detached:
+        return "0.0.0.dev0"
+
     latest_cmmt: Commit = repo.active_branch.commit
     if latest_tag.commit == latest_cmmt:
         return latest_tag.name
